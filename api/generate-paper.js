@@ -41,8 +41,8 @@ export default async function handler(req, res) {
 
 async function generateDraft(subject, paper, mode, topic) {
   const topicInstruction = mode === 'topic' && topic
-    ? `Focus ONLY on the topic: "${topic}". Generate 3–5 targeted questions on this topic.`
-    : 'Generate a FULL exam paper covering ALL required IEB topics for this paper.';
+    ? `Focus ONLY on the topic: "${topic}". Generate exactly 3 targeted questions on this topic, each with 2-3 parts.`
+    : 'Generate a practice paper with exactly 5 questions covering the key IEB topics for this paper. Each question should have 2-4 parts. Keep solutions concise — one line per step.';
 
   const rules = SUBJECT_RULES[subject]?.[paper] || '';
   const system = `You are an expert IEB Grade 12 exam paper creator.\n\nCRITICAL RULES:\n- Return ONLY valid JSON. No markdown. No explanation. No code blocks.\n- All mark allocations must follow IEB standards exactly.\n- All mathematics must be correct and verifiable.\n- Questions must be self-contained.\n- Solutions must show full working step by step.\n${rules}`;
