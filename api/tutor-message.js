@@ -1,11 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
-import admin from 'firebase-admin';
+import { verifyToken, getUserDoc } from './_auth.js';
 
-function initAdmin() {
-  if (admin.apps.length) return;
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-}
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const MODEL = 'claude-sonnet-4-6';
+const FREE_MSG_LIMIT = 10;
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,42 +11,54 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-  initAdmin();
-
   let uid;
   try {
-    const token = (req.headers.authorization || '').replace('Bearer ', '').trim();
-    const decoded = await admin.auth().verifyIdToken(token);
+    const decoded = await verifyToken(req);
     uid = decoded.uid;
   } catch {
     res.status(401).json({ error: 'Unauthorised' }); return;
   }
 
-  const snap = await admin.firestore().collection('users').doc(uid).get();
-  const userDoc = snap.exists() ? snap.data() : null;
-  const { messages, paperJSON, subject } = req.body || {};
+  const userDoc = await getUserDoc(uid);
+  const { messages, paperJSON, subject, paper } = req.body || {};
 
-  if (userDoc?.tier === 'free' && messages.filter(m => m.role === 'user').length > 10) {
+  if (userDoc?.tier === 'free' && messages.filter(m => m.role === 'user').length > FREE_MSG_LIMIT) {
     res.status(403).json({ error: 'Free tutor message limit reached', code: 'LIMIT_REACHED' }); return;
   }
 
-  const paperContext = paperJSON
-    ? `\n\nCURRENT PRACTICE PAPER: ${paperJSON.subject} ${paperJSON.paper} (${paperJSON.totalMarks} marks)\nTopics: ${paperJSON.questions?.map(q => `Q${q.questionNumber}: ${q.topic}`).join(', ')}`
-    : '';
-
-  const system = `You are an expert IEB Grade 12 exam tutor specialising in ${subject || 'all subjects'}.${paperContext}\n\nGuide students to the answer — do not give it directly. Show full working when explaining methods. Keep responses concise and exam-focused. Maximum 4 paragraphs.`;
+  const systemPrompt = buildTutorSystem(subject, paper, paperJSON);
+  const apiMessages = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
 
   try {
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: MODEL,
       max_tokens: 600,
-      system,
-      messages: messages.slice(-10).map(m => ({ role: m.role, content: m.content }))
+      system: systemPrompt,
+      messages: apiMessages
     });
-    res.status(200).json({ reply: response.content[0].text.trim() });
+
+    const reply = response.content[0].text.trim();
+    res.status(200).json({ reply });
   } catch (err) {
     console.error('Tutor error:', err);
     res.status(500).json({ error: 'Tutor unavailable. Please try again.' });
   }
+}
+
+function buildTutorSystem(subject, paper, paperJSON) {
+  let paperContext = '';
+  if (paperJSON) {
+    const topics = paperJSON.questions?.map(q => `Q${q.questionNumber}: ${q.topic}`).join(', ') || '';
+    paperContext = `\n\nCURRENT PRACTICE PAPER: ${paperJSON.subject} ${paperJSON.paper} (${paperJSON.totalMarks} marks)\nTopics covered: ${topics}`;
+  }
+
+  return `You are an expert IEB Grade 12 exam tutor specialising in ${subject || 'all subjects'}.${paperContext}
+
+Your approach:
+- Guide students to the answer — do not give it directly. Ask leading questions.
+- Show full working when explaining a method, referencing IEB instruction words (calculate, determine, describe, explain, discuss).
+- Keep responses concise and exam-focused. Align to IEB curriculum and examiner expectations.
+- If the student asks about a specific question from their practice paper, reference it directly.
+- Use simple, clear language. Format maths clearly using plain text or LaTeX.
+- Maximum response length: 4 paragraphs or a clear step-by-step list.`;
 }
