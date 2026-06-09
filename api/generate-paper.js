@@ -92,7 +92,7 @@ export default async function handler(req, res) {
   }
 
   const snap = await admin.firestore().collection('users').doc(uid).get();
-  const userDoc = snap.exists ? snap.data() : null;
+  const userDoc = snap.exists() ? snap.data() : null;
   if (!userDoc) { res.status(404).json({ error: 'User not found' }); return; }
 
   if (userDoc.tier === 'free' && (userDoc.papersGenerated || 0) >= 5) {

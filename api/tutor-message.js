@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   }
 
   const snap = await admin.firestore().collection('users').doc(uid).get();
-  const userDoc = snap.exists ? snap.data() : null;
+  const userDoc = snap.exists() ? snap.data() : null;
   const { messages, paperJSON, subject } = req.body || {};
 
   if (userDoc?.tier === 'free' && messages.filter(m => m.role === 'user').length > 10) {
