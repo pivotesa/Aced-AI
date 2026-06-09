@@ -166,6 +166,20 @@
               <span class="btn-loader hidden"></span>
             </button>
           </form>
+
+          <!-- Generation progress overlay (shown while generating) -->
+          <div id="gen-progress" class="gen-progress hidden">
+            <div class="gen-progress-inner">
+              <div class="gen-spinner"></div>
+              <p class="gen-status" id="gen-status">Generating questions…</p>
+              <div class="gen-steps">
+                <span class="gen-step active" id="gstep-1">✦ Writing questions</span>
+                <span class="gen-step" id="gstep-2">✦ Building solutions</span>
+                <span class="gen-step" id="gstep-3">✦ Verifying answers</span>
+              </div>
+              <p class="gen-hint">This takes about 60–90 seconds</p>
+            </div>
+          </div>
         </div>
 
         <!-- Recent Sessions -->

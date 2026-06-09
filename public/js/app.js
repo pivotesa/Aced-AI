@@ -263,17 +263,39 @@ document.getElementById('form-generate').addEventListener('submit', async e => {
 
   if (!subject || !paper) return;
 
-  const btn     = document.getElementById('btn-generate');
-  const btnText = btn.querySelector('.btn-text');
-  const loader  = btn.querySelector('.btn-loader');
+  const btn      = document.getElementById('btn-generate');
+  const progress = document.getElementById('gen-progress');
+  const genStatus = document.getElementById('gen-status');
   btn.disabled = true;
-  btnText.classList.add('hidden');
-  loader.classList.remove('hidden');
+
+  // Show progress overlay
+  progress.classList.remove('hidden');
+  setGenStep(1);
+
+  // Cycle status messages while waiting
+  const messages = [
+    'Generating questions…',
+    'Building exam questions…',
+    'Writing solutions…',
+    'Structuring the paper…',
+    'Verifying answers…',
+    'Almost ready…'
+  ];
+  let msgIdx = 0;
+  const msgTimer = setInterval(() => {
+    msgIdx = (msgIdx + 1) % messages.length;
+    genStatus.textContent = messages[msgIdx];
+    // Advance step indicators based on time elapsed
+    if (msgIdx === 2) setGenStep(2);
+    if (msgIdx === 4) setGenStep(3);
+  }, 12000);
 
   try {
     const { paperJSON } = await generatePaper(subject, paper, mode, topic);
 
-    // Save to Firestore and increment counter
+    clearInterval(msgTimer);
+    setGenStepDone();
+
     const sessionId = await saveSession(currentUser.uid, { subject, paper, mode, topic, paperJSON, marking: null });
     await incrementPapersGenerated(currentUser.uid);
     userDoc = { ...userDoc, papersGenerated: (userDoc.papersGenerated || 0) + 1 };
@@ -283,6 +305,7 @@ document.getElementById('form-generate').addEventListener('submit', async e => {
     navigate('paper');
 
   } catch (err) {
+    clearInterval(msgTimer);
     if (err.code === 'LIMIT_REACHED') {
       showUpgradeModal();
     } else {
@@ -290,8 +313,8 @@ document.getElementById('form-generate').addEventListener('submit', async e => {
     }
   } finally {
     btn.disabled = false;
-    btnText.classList.remove('hidden');
-    loader.classList.add('hidden');
+    progress.classList.add('hidden');
+    resetGenSteps();
   }
 });
 
@@ -545,6 +568,31 @@ function escapeHTML(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function setGenStep(n) {
+  [1, 2, 3].forEach(i => {
+    const el = document.getElementById(`gstep-${i}`);
+    el.classList.toggle('active', i === n);
+    el.classList.remove('done');
+  });
+}
+
+function setGenStepDone() {
+  [1, 2, 3].forEach(i => {
+    const el = document.getElementById(`gstep-${i}`);
+    el.classList.remove('active');
+    el.classList.add('done');
+  });
+}
+
+function resetGenSteps() {
+  [1, 2, 3].forEach(i => {
+    const el = document.getElementById(`gstep-${i}`);
+    el.classList.remove('active', 'done');
+  });
+  document.getElementById('gstep-1').classList.add('active');
+  document.getElementById('gen-status').textContent = 'Generating questions…';
 }
 
 function friendlyAuthError(code) {

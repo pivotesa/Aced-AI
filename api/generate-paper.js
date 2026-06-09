@@ -42,20 +42,45 @@ export default async function handler(req, res) {
 }
 
 async function generateDraft(subject, paper, mode, topic) {
-  const topicInstruction = mode === 'topic' && topic
-    ? `Focus ONLY on the topic: "${topic}". Generate exactly 3 targeted questions on this topic, each with 2-3 parts.`
-    : 'Generate a practice paper with exactly 4 questions covering the key IEB topics for this paper. Each question should have 2-3 parts. Keep solutions concise — one line per step.';
+  const rules = SUBJECT_RULES[subject]?.[paper] || {};
+  const duration = rules.duration || '3 hours';
 
-  const rules = SUBJECT_RULES[subject]?.[paper] || '';
-  const system = `You are an expert IEB Grade 12 exam paper creator.\n\nCRITICAL RULES:\n- Return ONLY valid JSON. No markdown. No explanation. No code blocks.\n- All mark allocations must follow IEB standards exactly.\n- All mathematics must be correct and verifiable.\n- Questions must be self-contained.\n- Solutions must show full working step by step.\n${rules}`;
+  if (mode === 'topic' && topic) {
+    const questions = await generateBatch(subject, paper, [`Focus ONLY on the topic: "${topic}". Generate 3 questions on this topic.`], 1, rules);
+    const totalMarks = questions.reduce((s, q) => s + q.questionTotal, 0);
+    return { subject, paper, grade: 12, totalMarks, duration, questions };
+  }
+
+  // Full paper: 3 parallel batches of 2 questions each (6 questions total, ~25 marks each)
+  const batches = rules.topicGroups || [
+    'Generate questions 1–2 on the first third of topics for this paper.',
+    'Generate questions 3–4 on the middle third of topics for this paper.',
+    'Generate questions 5–6 on the final third of topics for this paper.'
+  ];
+
+  const [b1, b2, b3] = await Promise.all([
+    generateBatch(subject, paper, batches[0], 1, rules),
+    generateBatch(subject, paper, batches[1], 3, rules),
+    generateBatch(subject, paper, batches[2], 5, rules),
+  ]);
+
+  const questions = [...b1, ...b2, ...b3].map((q, i) => ({ ...q, questionNumber: i + 1 }));
+  const totalMarks = questions.reduce((s, q) => s + q.questionTotal, 0);
+  return { subject, paper, grade: 12, totalMarks, duration, questions };
+}
+
+async function generateBatch(subject, paper, topicInstruction, startQuestion, rules) {
+  const ruleText = rules.marks ? `Target approximately ${Math.round(rules.marks / 3)} marks for this batch.` : '';
+  const system = `You are an expert IEB Grade 12 exam paper creator.\n\nCRITICAL RULES:\n- Return ONLY a valid JSON array of questions. No markdown, no wrapper object, no explanation.\n- Questions must be numbered starting from ${startQuestion}.\n- Each question must have 3-5 parts.\n- Solutions must show concise working — one line per step.\n- All mathematics must be correct.\n${ruleText}`;
 
   const response = await client.messages.create({
-    model: MODEL, max_tokens: 8000, system,
-    messages: [{ role: 'user', content: `Generate an IEB Grade 12 ${subject} ${paper} practice paper. ${topicInstruction}\n\nReturn ONLY valid JSON:\n{"subject":"${subject}","paper":"${paper}","grade":12,"totalMarks":<number>,"duration":"<e.g. 3 hours>","questions":[{"questionNumber":<number>,"topic":"<topic>","context":"<context or null>","parts":[{"part":"<a/b/c>","instruction":"<text>","expression":"<math or null>","marks":<number>,"solution":{"steps":["Step 1:..."],"answer":"<answer>","methodMarks":[{"mark":1,"criterion":"<criterion>"}]}}],"questionTotal":<number>}]}` }]
+    model: MODEL, max_tokens: 3500, system,
+    messages: [{ role: 'user', content: `Generate exactly 2 IEB Grade 12 ${subject} ${paper} questions. ${topicInstruction}\n\nReturn ONLY a valid JSON array:\n[{"questionNumber":${startQuestion},"topic":"<topic>","context":null,"parts":[{"part":"a","instruction":"<text>","expression":null,"marks":<number>,"solution":{"steps":["Step 1: ..."],"answer":"<answer>","methodMarks":[{"mark":1,"criterion":"<criterion>"}]}}],"questionTotal":<number>}]` }]
   });
 
   const raw = response.content[0].text.trim();
-  return JSON.parse(extractJSON(raw));
+  const parsed = JSON.parse(extractJSONArray(raw));
+  return Array.isArray(parsed) ? parsed : parsed.questions || [];
 }
 
 
@@ -118,30 +143,109 @@ async function correctSolutions(paperJSON) {
 
 const SUBJECT_RULES = {
   'Mathematics': {
-    'Paper 1': 'Total marks: 150, Duration: 3 hours. Required topics: Algebra, Sequences, Functions, Logarithms, Financial mathematics, Probability.',
-    'Paper 2': 'Total marks: 150, Duration: 3 hours. Required topics: Statistics, Analytical geometry, Trigonometry, Euclidean geometry.'
+    'Paper 1': {
+      marks: 150, duration: '3 hours',
+      topicGroups: [
+        'Generate questions 1–2 on Algebra and Sequences (number patterns, arithmetic & geometric series).',
+        'Generate questions 3–4 on Functions and Logarithms (hyperbola, parabola, exponential, log equations).',
+        'Generate questions 5–6 on Financial Mathematics and Probability (compound interest, annuities, counting principles).'
+      ]
+    },
+    'Paper 2': {
+      marks: 150, duration: '3 hours',
+      topicGroups: [
+        'Generate questions 1–2 on Statistics (regression, standard deviation, ogives, box-and-whisker).',
+        'Generate questions 3–4 on Analytical Geometry and Trigonometry (circles, lines, trig equations, compound angles).',
+        'Generate questions 5–6 on Euclidean Geometry (circle theorems, proofs, similarity and congruence).'
+      ]
+    }
   },
   'Physical Sciences': {
-    'Physics': 'Total marks: 150, Duration: 3 hours. Include Newton\'s laws, momentum, electricity, and waves.',
-    'Chemistry': 'Total marks: 150, Duration: 3 hours. Include organic chemistry, equilibrium, acids/bases, electrochemistry.'
+    'Physics': {
+      marks: 150, duration: '3 hours',
+      topicGroups: [
+        "Generate questions 1–2 on Newton's laws and momentum (impulse, conservation of momentum).",
+        'Generate questions 3–4 on Electricity (Ohm\'s law, circuits, power, internal resistance).',
+        'Generate questions 5–6 on Waves, Sound and Light (Doppler effect, electromagnetic spectrum, photoelectric effect).'
+      ]
+    },
+    'Chemistry': {
+      marks: 150, duration: '3 hours',
+      topicGroups: [
+        'Generate questions 1–2 on Organic Chemistry (naming, reactions, polymers).',
+        'Generate questions 3–4 on Chemical Equilibrium and Acids & Bases (Le Chatelier, pH, titrations).',
+        'Generate questions 5–6 on Electrochemistry (galvanic cells, electrolytic cells, standard electrode potentials).'
+      ]
+    }
   },
   'English Home Language': {
-    'Paper 1: Language': 'Total marks: 70, Duration: 2 hours.',
-    'Paper 2: Literature': 'Total marks: 80, Duration: 2.5 hours.',
-    'Paper 3: Writing': 'Total marks: 100, Duration: 2.5 hours.'
+    'Paper 1: Language': { marks: 70, duration: '2 hours',
+      topicGroups: [
+        'Generate questions 1–2 on comprehension and language use (reading a passage, answering questions).',
+        'Generate questions 3–4 on summary writing skills.',
+        'Generate questions 5–6 on language structures and conventions (grammar, vocabulary).'
+      ]
+    },
+    'Paper 2: Literature': { marks: 80, duration: '2.5 hours',
+      topicGroups: [
+        'Generate questions 1–2 on poetry analysis (imagery, tone, structure).',
+        'Generate questions 3–4 on drama (character, theme, dramatic devices).',
+        'Generate questions 5–6 on prose (novel/short story — plot, character, context).'
+      ]
+    },
+    'Paper 3: Writing': { marks: 100, duration: '2.5 hours',
+      topicGroups: [
+        'Generate questions 1–2 on transactional writing (formal letter, report, speech).',
+        'Generate questions 3–4 on essay writing (discursive or argumentative).',
+        'Generate questions 5–6 on creative writing (narrative or descriptive).'
+      ]
+    }
   },
   'Life Sciences': {
-    'Paper 1': 'Total marks: 150, Duration: 2.5 hours.',
-    'Paper 2': 'Total marks: 150, Duration: 2.5 hours.'
+    'Paper 1': {
+      marks: 150, duration: '2.5 hours',
+      topicGroups: [
+        'Generate questions 1–2 on Meiosis and Genetics (Mendelian inheritance, monohybrid crosses).',
+        'Generate questions 3–4 on DNA, RNA and Protein Synthesis (transcription, translation, mutations).',
+        'Generate questions 5–6 on Evolution (natural selection, evidence, speciation).'
+      ]
+    },
+    'Paper 2': {
+      marks: 150, duration: '2.5 hours',
+      topicGroups: [
+        'Generate questions 1–2 on the Human Nervous System and Sense Organs.',
+        'Generate questions 3–4 on Homeostasis (thermoregulation, osmoregulation, blood glucose).',
+        'Generate questions 5–6 on Human Reproduction and Responding to the Environment.'
+      ]
+    }
   },
   'Accounting': {
-    'Paper 1': 'Total marks: 300, Duration: 3 hours.'
+    'Paper 1': {
+      marks: 300, duration: '3 hours',
+      topicGroups: [
+        'Generate questions 1–2 on Financial Statements (income statement, balance sheet, notes).',
+        'Generate questions 3–4 on Reconciliations and Internal Control (bank rec, debtors/creditors).',
+        'Generate questions 5–6 on Analysis and Interpretation of Financial Statements (ratios, cash flow).'
+      ]
+    }
   }
 };
 
 function extractJSON(text) {
   const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fence) return fence[1].trim();
+  const start = text.indexOf('{'), end = text.lastIndexOf('}');
+  if (start !== -1 && end !== -1) return text.slice(start, end + 1);
+  return text;
+}
+
+function extractJSONArray(text) {
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fence) return fence[1].trim();
+  // Try array first
+  const arrStart = text.indexOf('['), arrEnd = text.lastIndexOf(']');
+  if (arrStart !== -1 && arrEnd !== -1) return text.slice(arrStart, arrEnd + 1);
+  // Fall back to object
   const start = text.indexOf('{'), end = text.lastIndexOf('}');
   if (start !== -1 && end !== -1) return text.slice(start, end + 1);
   return text;

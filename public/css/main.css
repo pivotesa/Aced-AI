@@ -740,6 +740,40 @@ body {
 .toast.success { background: #15803d; }
 @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 
+/* ── GENERATION PROGRESS ─────────────────────────────────── */
+.gen-progress {
+  margin-top: 20px;
+  background: var(--navy-lt);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 32px 24px;
+  text-align: center;
+}
+.gen-progress-inner { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.gen-spinner {
+  width: 48px; height: 48px;
+  border: 3px solid var(--border);
+  border-top-color: var(--teal);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+.gen-status { font-size: 1rem; font-weight: 600; color: var(--text); margin: 0; }
+.gen-steps { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 280px; }
+.gen-step {
+  font-size: 0.82rem; color: var(--text-muted);
+  padding: 7px 14px; border-radius: 8px;
+  background: var(--navy); border: 1px solid var(--border);
+  transition: all 0.4s ease;
+}
+.gen-step.active {
+  color: var(--teal);
+  border-color: var(--teal);
+  background: rgba(45,212,191,0.08);
+  font-weight: 600;
+}
+.gen-step.done { color: #4ade80; border-color: #4ade80; background: rgba(74,222,128,0.08); }
+.gen-hint { font-size: 0.78rem; color: var(--text-muted); margin: 0; }
+
 /* ── PRINT ────────────────────────────────────────────────── */
 @media print {
   #nav, .paper-toolbar, .answer-input, .solution-toggle, #btn-submit-paper { display: none !important; }
