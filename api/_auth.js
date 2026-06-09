@@ -20,6 +20,12 @@ export async function verifyToken(req) {
 
 export async function getUserDoc(uid) {
   initAdmin();
-  const snap = await admin.firestore().collection('users').doc(uid).get();
-  return snap.exists ? snap.data() : null;
+  const ref = admin.firestore().collection('users').doc(uid);
+  const snap = await ref.get();
+  if (snap.exists) return snap.data();
+
+  // Create a default doc for users who authenticated but have no Firestore record
+  const defaultDoc = { tier: 'free', papersGenerated: 0, createdAt: admin.firestore.FieldValue.serverTimestamp() };
+  await ref.set(defaultDoc);
+  return defaultDoc;
 }
