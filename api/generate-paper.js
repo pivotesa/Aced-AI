@@ -31,24 +31,11 @@ export default async function handler(req, res) {
   if (!subject || !paper) { res.status(400).json({ error: 'subject and paper are required' }); return; }
 
   try {
-    const paperJSON = await generateWithRetry(subject, paper, mode, topic, 2);
+    const paperJSON = await generateDraft(subject, paper, mode, topic);
     res.status(200).json({ paperJSON });
   } catch (err) {
     console.error('Generate error:', err.message);
     res.status(500).json({ error: 'Paper generation failed. Please try again.' });
-  }
-}
-
-async function generateWithRetry(subject, paper, mode, topic, retriesLeft) {
-  try {
-    const draft = await generateDraft(subject, paper, mode, topic);
-    const verified = await verifyDraft(draft);
-    if (verified.valid) return draft;
-    if (retriesLeft <= 0) return draft;
-    return generateWithRetry(subject, paper, mode, topic, retriesLeft - 1);
-  } catch (err) {
-    if (retriesLeft <= 0) throw err;
-    return generateWithRetry(subject, paper, mode, topic, retriesLeft - 1);
   }
 }
 
@@ -61,7 +48,7 @@ async function generateDraft(subject, paper, mode, topic) {
   const system = `You are an expert IEB Grade 12 exam paper creator.\n\nCRITICAL RULES:\n- Return ONLY valid JSON. No markdown. No explanation. No code blocks.\n- All mark allocations must follow IEB standards exactly.\n- All mathematics must be correct and verifiable.\n- Questions must be self-contained.\n- Solutions must show full working step by step.\n${rules}`;
 
   const response = await client.messages.create({
-    model: MODEL, max_tokens: 8000, system,
+    model: MODEL, max_tokens: 4000, system,
     messages: [{ role: 'user', content: `Generate an IEB Grade 12 ${subject} ${paper} practice paper. ${topicInstruction}\n\nReturn ONLY valid JSON:\n{"subject":"${subject}","paper":"${paper}","grade":12,"totalMarks":<number>,"duration":"<e.g. 3 hours>","questions":[{"questionNumber":<number>,"topic":"<topic>","context":"<context or null>","parts":[{"part":"<a/b/c>","instruction":"<text>","expression":"<math or null>","marks":<number>,"solution":{"steps":["Step 1:..."],"answer":"<answer>","methodMarks":[{"mark":1,"criterion":"<criterion>"}]}}],"questionTotal":<number>}]}` }]
   });
 
@@ -69,13 +56,6 @@ async function generateDraft(subject, paper, mode, topic) {
   return JSON.parse(extractJSON(raw));
 }
 
-async function verifyDraft(paperJSON) {
-  const response = await client.messages.create({
-    model: MODEL, max_tokens: 500,
-    messages: [{ role: 'user', content: `Verify this IEB exam paper JSON:\n1. totalMarks equals sum of all questionTotal values\n2. Each questionTotal equals sum of its parts' marks\n\nPaper: ${JSON.stringify(paperJSON)}\n\nRespond ONLY: {"valid":true} OR {"valid":false,"issues":["..."]}` }]
-  });
-  return JSON.parse(extractJSON(response.content[0].text.trim()));
-}
 
 const SUBJECT_RULES = {
   'Mathematics': {
