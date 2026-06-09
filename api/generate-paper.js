@@ -31,7 +31,9 @@ export default async function handler(req, res) {
   if (!subject || !paper) { res.status(400).json({ error: 'subject and paper are required' }); return; }
 
   try {
-    const paperJSON = await generateDraft(subject, paper, mode, topic);
+    const draft = await generateDraft(subject, paper, mode, topic);
+    const fixed = fixMarkTotals(draft);
+    const paperJSON = await correctSolutions(fixed);
     res.status(200).json({ paperJSON });
   } catch (err) {
     console.error('Generate error:', err.message);
@@ -56,6 +58,63 @@ async function generateDraft(subject, paper, mode, topic) {
   return JSON.parse(extractJSON(raw));
 }
 
+
+// Option 1: pure arithmetic — recompute all mark totals from parts
+function fixMarkTotals(paperJSON) {
+  const questions = paperJSON.questions.map(q => {
+    const questionTotal = q.parts.reduce((sum, p) => sum + (p.marks || 0), 0);
+    return { ...q, questionTotal };
+  });
+  const totalMarks = questions.reduce((sum, q) => sum + q.questionTotal, 0);
+  return { ...paperJSON, questions, totalMarks };
+}
+
+// Option 2: lightweight Claude call — check & fix solution working only (no solutions regenerated, just flagged errors corrected)
+async function correctSolutions(paperJSON) {
+  // Build a compact representation: question + parts with marks + answers only (no steps)
+  const compact = paperJSON.questions.map(q => ({
+    questionNumber: q.questionNumber,
+    topic: q.topic,
+    parts: q.parts.map(p => ({
+      part: p.part,
+      instruction: p.instruction,
+      expression: p.expression || null,
+      marks: p.marks,
+      answer: p.solution?.answer
+    }))
+  }));
+
+  const response = await client.messages.create({
+    model: MODEL,
+    max_tokens: 1500,
+    messages: [{
+      role: 'user',
+      content: `You are checking an IEB Grade 12 ${paperJSON.subject} exam paper for mathematical errors.\n\nFor each question part below, verify the answer is correct. If an answer is wrong, provide the correct answer. Return ONLY valid JSON — same structure as input but with corrected answers where needed.\n\n${JSON.stringify(compact)}`
+    }]
+  });
+
+  const raw = response.content[0].text.trim();
+  let corrected;
+  try {
+    corrected = JSON.parse(extractJSON(raw));
+  } catch {
+    return paperJSON; // if the correction call fails, use original
+  }
+
+  // Merge corrected answers back into the full paperJSON (preserving steps/methodMarks)
+  const questions = paperJSON.questions.map(q => {
+    const cq = corrected.find(c => c.questionNumber === q.questionNumber);
+    if (!cq) return q;
+    const parts = q.parts.map(p => {
+      const cp = cq.parts?.find(c => c.part === p.part);
+      if (!cp || cp.answer === p.solution?.answer) return p;
+      return { ...p, solution: { ...p.solution, answer: cp.answer } };
+    });
+    return { ...q, parts };
+  });
+
+  return { ...paperJSON, questions };
+}
 
 const SUBJECT_RULES = {
   'Mathematics': {
