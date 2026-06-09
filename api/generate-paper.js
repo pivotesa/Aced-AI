@@ -48,7 +48,7 @@ async function generateDraft(subject, paper, mode, topic) {
   const system = `You are an expert IEB Grade 12 exam paper creator.\n\nCRITICAL RULES:\n- Return ONLY valid JSON. No markdown. No explanation. No code blocks.\n- All mark allocations must follow IEB standards exactly.\n- All mathematics must be correct and verifiable.\n- Questions must be self-contained.\n- Solutions must show full working step by step.\n${rules}`;
 
   const response = await client.messages.create({
-    model: MODEL, max_tokens: 4000, system,
+    model: MODEL, max_tokens: 6000, system,
     messages: [{ role: 'user', content: `Generate an IEB Grade 12 ${subject} ${paper} practice paper. ${topicInstruction}\n\nReturn ONLY valid JSON:\n{"subject":"${subject}","paper":"${paper}","grade":12,"totalMarks":<number>,"duration":"<e.g. 3 hours>","questions":[{"questionNumber":<number>,"topic":"<topic>","context":"<context or null>","parts":[{"part":"<a/b/c>","instruction":"<text>","expression":"<math or null>","marks":<number>,"solution":{"steps":["Step 1:..."],"answer":"<answer>","methodMarks":[{"mark":1,"criterion":"<criterion>"}]}}],"questionTotal":<number>}]}` }]
   });
 
