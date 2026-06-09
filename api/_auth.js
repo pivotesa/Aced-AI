@@ -21,5 +21,5 @@ export async function verifyToken(req) {
 export async function getUserDoc(uid) {
   initAdmin();
   const snap = await admin.firestore().collection('users').doc(uid).get();
-  return snap.exists() ? snap.data() : null;
+  return snap.exists ? snap.data() : null;
 }
