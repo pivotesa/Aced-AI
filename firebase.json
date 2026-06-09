@@ -1,0 +1,18 @@
+{
+  "hosting": {
+    "public": "public",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      { "source": "/api/generate-paper",    "function": "generatePaper" },
+      { "source": "/api/mark-paper",        "function": "markPaper" },
+      { "source": "/api/tutor-message",     "function": "tutorMessage" },
+      { "source": "/api/create-subscription",    "function": "createSubscription" },
+      { "source": "/api/subscription-webhook",  "function": "subscriptionWebhook" },
+      { "source": "**",                     "destination": "/index.html" }
+    ]
+  },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs20"
+  }
+}

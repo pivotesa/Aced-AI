@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aced AI — IEB Matric Exam Prep</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]})"></script>
+  <!-- Firebase -->
+  <script type="module" src="/js/firebase.js"></script>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+
+<!-- ── APP SHELL ──────────────────────────────────────────── -->
+<div id="app">
+
+  <!-- NAV -->
+  <nav id="nav" class="hidden">
+    <a href="#" class="nav-logo" data-view="dashboard">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="8" fill="#2DD4BF"/>
+        <path d="M8 20L14 8L20 20M10.5 16h7" stroke="#0D1117" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+      <span class="nav-wordmark"><span>Aced</span><span class="teal">AI</span></span>
+    </a>
+    <div class="nav-center">
+      <button class="nav-btn" data-view="dashboard">Dashboard</button>
+      <button class="nav-btn" data-view="tutor">AI Tutor</button>
+    </div>
+    <div class="nav-right">
+      <span id="nav-tier-badge"></span>
+      <button class="nav-btn" data-view="settings">Settings</button>
+      <button id="nav-signout" class="btn-ghost">Sign out</button>
+    </div>
+  </nav>
+
+  <!-- VIEWS -->
+  <main id="main">
+
+    <!-- AUTH VIEW -->
+    <section id="view-auth" class="view active">
+      <div class="auth-split">
+        <div class="auth-brand">
+          <div class="auth-logo">
+            <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+              <rect width="44" height="44" rx="12" fill="#2DD4BF"/>
+              <path d="M12 32L22 12L32 32M16 26h12" stroke="#0D1117" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            <span class="brand-wordmark"><span>Aced</span><span class="teal">AI</span></span>
+          </div>
+          <h1 class="auth-headline">Ace every IEB<br>matric exam.</h1>
+          <p class="auth-sub">AI-generated practice papers, automated marking, and a tutor that knows the IEB curriculum.</p>
+          <div class="auth-features">
+            <div class="auth-feature"><span class="feat-icon">✦</span> Full IEB-aligned practice papers</div>
+            <div class="auth-feature"><span class="feat-icon">✦</span> Per-question feedback & method marks</div>
+            <div class="auth-feature"><span class="feat-icon">✦</span> AI tutor with curriculum context</div>
+          </div>
+        </div>
+        <div class="auth-panel">
+          <div class="auth-card">
+            <div class="auth-tabs">
+              <button class="auth-tab active" data-tab="signin">Sign in</button>
+              <button class="auth-tab" data-tab="signup">Sign up</button>
+            </div>
+
+            <!-- Sign In -->
+            <form id="form-signin" class="auth-form">
+              <div class="field">
+                <label>Email</label>
+                <input type="email" id="signin-email" placeholder="you@example.com" required>
+              </div>
+              <div class="field">
+                <label>Password</label>
+                <input type="password" id="signin-password" placeholder="••••••••" required>
+              </div>
+              <button type="submit" class="btn-primary full">Sign in</button>
+              <p class="auth-error hidden" id="signin-error"></p>
+            </form>
+
+            <!-- Sign Up -->
+            <form id="form-signup" class="auth-form hidden">
+              <div class="field">
+                <label>Full name</label>
+                <input type="text" id="signup-name" placeholder="Your name" required>
+              </div>
+              <div class="field">
+                <label>Email</label>
+                <input type="email" id="signup-email" placeholder="you@example.com" required>
+              </div>
+              <div class="field">
+                <label>Password</label>
+                <input type="password" id="signup-password" placeholder="Min. 8 characters" required minlength="8">
+              </div>
+              <button type="submit" class="btn-primary full">Create account</button>
+              <p class="auth-error hidden" id="signup-error"></p>
+            </form>
+
+            <div class="auth-divider"><span>or</span></div>
+            <button id="btn-google" class="btn-google">
+              <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/><path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+              Continue with Google
+            </button>
+            <p class="auth-terms">By continuing you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DASHBOARD VIEW -->
+    <section id="view-dashboard" class="view hidden">
+      <div class="page-container">
+        <div class="page-header">
+          <div>
+            <h2 id="dashboard-greeting">Good morning</h2>
+            <p class="page-sub">Generate a practice paper or continue where you left off.</p>
+          </div>
+          <div id="dashboard-usage" class="usage-badge"></div>
+        </div>
+
+        <!-- Paper Generator Card -->
+        <div class="card generator-card">
+          <h3 class="card-title">Generate Practice Paper</h3>
+          <form id="form-generate" class="generator-form">
+            <div class="form-row">
+              <div class="field">
+                <label>Subject</label>
+                <select id="gen-subject" required>
+                  <option value="">Select subject…</option>
+                  <option value="Mathematics">Mathematics</option>
+                  <option value="Physical Sciences">Physical Sciences</option>
+                  <option value="English Home Language">English Home Language</option>
+                  <option value="Life Sciences">Life Sciences</option>
+                  <option value="Accounting">Accounting</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Paper</label>
+                <select id="gen-paper" required disabled>
+                  <option value="">Select paper…</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Mode</label>
+                <select id="gen-mode">
+                  <option value="full">Full paper</option>
+                  <option value="topic">Topic drill</option>
+                </select>
+              </div>
+            </div>
+            <div class="field hidden" id="topic-field">
+              <label>Topic</label>
+              <select id="gen-topic">
+                <option value="">Select topic…</option>
+              </select>
+            </div>
+            <button type="submit" class="btn-primary" id="btn-generate">
+              <span class="btn-text">Generate Paper</span>
+              <span class="btn-loader hidden"></span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Recent Sessions -->
+        <div class="section-header">
+          <h3>Recent Sessions</h3>
+        </div>
+        <div id="recent-sessions" class="sessions-grid">
+          <p class="empty-state">No sessions yet — generate your first paper above.</p>
+        </div>
+
+        <!-- Topic Performance -->
+        <div class="section-header">
+          <h3>Topic Performance</h3>
+        </div>
+        <div id="topic-performance" class="topic-grid">
+          <p class="empty-state">Complete a paper to see your performance breakdown.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAPER VIEW -->
+    <section id="view-paper" class="view hidden">
+      <div class="page-container">
+        <div class="paper-toolbar">
+          <button class="btn-ghost" id="btn-back-dashboard">← Dashboard</button>
+          <div class="paper-meta" id="paper-meta"></div>
+          <div class="paper-actions">
+            <button class="btn-ghost" id="btn-print">Print / PDF</button>
+            <button class="btn-primary" id="btn-submit-paper">Submit for Marking</button>
+          </div>
+        </div>
+        <div id="paper-content" class="paper-content"></div>
+      </div>
+    </section>
+
+    <!-- RESULTS VIEW -->
+    <section id="view-results" class="view hidden">
+      <div class="page-container">
+        <div class="results-header">
+          <button class="btn-ghost" id="btn-back-paper">← Back to paper</button>
+          <button class="btn-ghost" id="btn-new-paper">New paper</button>
+        </div>
+        <div id="results-content"></div>
+      </div>
+    </section>
+
+    <!-- TUTOR VIEW -->
+    <section id="view-tutor" class="view hidden">
+      <div class="tutor-layout">
+        <div class="tutor-sidebar">
+          <h3>Current Paper</h3>
+          <div id="tutor-paper-context" class="tutor-context">No paper loaded. Generate one from the dashboard.</div>
+        </div>
+        <div class="tutor-main">
+          <div id="tutor-messages" class="tutor-messages">
+            <div class="tutor-welcome">
+              <div class="tutor-avatar">AI</div>
+              <div class="tutor-bubble">Hi! I'm your IEB exam tutor. Ask me anything about your practice paper, a topic you're struggling with, or how to approach a question. I'll guide you step by step.</div>
+            </div>
+          </div>
+          <div class="tutor-input-bar">
+            <div id="tutor-limit-warning" class="limit-warning hidden">Free tier: <span id="tutor-msgs-left">10</span> messages remaining. <a href="#" data-view="settings">Upgrade to Pro</a></div>
+            <div class="tutor-input-row">
+              <textarea id="tutor-input" placeholder="Ask about a question, topic, or concept…" rows="1"></textarea>
+              <button id="btn-tutor-send" class="btn-primary">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SETTINGS VIEW -->
+    <section id="view-settings" class="view hidden">
+      <div class="page-container narrow">
+        <h2>Settings</h2>
+
+        <div class="card">
+          <h3 class="card-title">Account</h3>
+          <div class="settings-row">
+            <span class="settings-label">Email</span>
+            <span id="settings-email" class="settings-value"></span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">Plan</span>
+            <span id="settings-plan" class="settings-value"></span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">Papers generated</span>
+            <span id="settings-papers" class="settings-value"></span>
+          </div>
+        </div>
+
+        <div class="card" id="upgrade-card">
+          <h3 class="card-title">Upgrade to Pro</h3>
+          <p class="card-desc">Unlimited papers across all 5 subjects, full method mark breakdowns, and unlimited AI tutor access.</p>
+          <div class="pricing-highlight">
+            <span class="price">R79</span><span class="price-period">/month</span>
+          </div>
+          <button class="btn-primary" id="btn-upgrade">Upgrade — R79/month</button>
+        </div>
+
+        <div class="card danger-card">
+          <h3 class="card-title">Sign out</h3>
+          <button class="btn-danger" id="settings-signout">Sign out of Aced AI</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- UPGRADE MODAL -->
+  <div id="modal-upgrade" class="modal-overlay hidden">
+    <div class="modal">
+      <button class="modal-close" id="modal-upgrade-close">✕</button>
+      <div class="modal-icon">🎓</div>
+      <h3>You've used your 5 free papers</h3>
+      <p>Upgrade to Pro for unlimited papers across all subjects, full marking, and unlimited AI tutor sessions.</p>
+      <div class="pricing-highlight">
+        <span class="price">R79</span><span class="price-period">/month</span>
+      </div>
+      <button class="btn-primary full" id="modal-upgrade-btn">Upgrade to Pro — R79/month</button>
+      <button class="btn-ghost full" id="modal-upgrade-cancel">Maybe later</button>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast hidden"></div>
+
+</div>
+
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>
