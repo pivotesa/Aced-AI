@@ -64,7 +64,7 @@ export default async function handler(req, res) {
   const generationId = await createGenerationState(uid, { subject, paper, mode });
 
   try {
-    const { paperJSON } = await generateValidatedPaper({
+    const { paperJSON, verification_report } = await generateValidatedPaper({
       subject, paper, mode, topic, telemetry,
       deps: { onStatus: (status) => updateGenerationState(generationId, status) },
     });
@@ -74,11 +74,14 @@ export default async function handler(req, res) {
     telemetry.costEstimateUSD = round6(estimateCostUSD(telemetry, MODELS.generation));
     telemetry.baselineSonnetCostUSD = round6(estimateBaselineCostUSD(telemetry));
 
-    await updateGenerationState(generationId, 'complete', { durationMs: telemetry.durationMs });
+    await updateGenerationState(generationId, 'complete', {
+      durationMs: telemetry.durationMs,
+      verificationReport: verification_report,
+    });
     // Fire-and-forget — don't await, don't fail the request on error
     logTelemetry(generationId, telemetry).catch(() => {});
 
-    res.status(200).json({ paperJSON, generationId });
+    res.status(200).json({ paperJSON, generationId, verificationReport: verification_report });
 
   } catch (err) {
     console.error('Generate error:', err.message);

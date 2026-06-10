@@ -9,7 +9,19 @@ export const MODELS = {
   correction:   process.env.CORRECTION_MODEL   || 'claude-haiku-4-5-20251001',
   marking:      process.env.MARKING_MODEL      || 'claude-sonnet-4-6',
   tutor:        process.env.TUTOR_MODEL        || 'claude-sonnet-4-6',
+  // Repair escalation: first repair attempt on Haiku (cheap), escalate to
+  // Sonnet only on the final attempt if Haiku's fix still fails validation.
+  repair:           process.env.REPAIR_MODEL           || 'claude-haiku-4-5-20251001',
+  repairEscalation: process.env.REPAIR_ESCALATION_MODEL || 'claude-sonnet-4-6',
 };
+
+/**
+ * Model for repair attempt N (0-indexed): Haiku for the first attempt, Sonnet
+ * for the last. The deterministic validators decide pass/fail either way.
+ */
+export function repairModelForAttempt(attempt) {
+  return attempt >= MAX_REPAIR_ATTEMPTS - 1 ? MODELS.repairEscalation : MODELS.repair;
+}
 
 export const MAX_TOKENS = {
   generation:   8000,

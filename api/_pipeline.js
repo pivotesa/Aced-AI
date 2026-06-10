@@ -22,8 +22,8 @@
  * Dependencies are injectable for integration tests with a mocked API.
  */
 
-import { MODELS, MAX_TOKENS, MAX_REPAIR_ATTEMPTS, SUBJECT_RULES } from './_config.js';
-import { runAllValidators } from './_validators.js';
+import { MODELS, MAX_TOKENS, MAX_REPAIR_ATTEMPTS, SUBJECT_RULES, repairModelForAttempt } from './_config.js';
+import { runVerification, appendFix } from './_verification.js';
 import { callClaude } from './_anthropic-client.js';
 import { getQuestion } from './_question-bank.js';
 import {
@@ -37,7 +37,7 @@ const noop = async () => {};
 /**
  * Generate, validate and repair a full paper.
  *
- * @returns {Promise<{paperJSON: object, finalValidation: object, quality: object|null}>}
+ * @returns {Promise<{paperJSON, finalValidation, quality, verification_report}>}
  */
 export async function generateValidatedPaper({ subject, paper, mode, topic, telemetry, deps = {} }) {
   const {
@@ -49,6 +49,7 @@ export async function generateValidatedPaper({ subject, paper, mode, topic, tele
   const rules = SUBJECT_RULES[subject][paper];
   const targetMarks = (mode !== 'topic' && rules.marks) ? rules.marks : null;
   const system = buildSystemBlocks(subject, paper);
+  const fixes = []; // accumulated across repair passes, attached to the final report
 
   // claude-haiku-4-5 silently skips caching below a 4096-token prefix.
   if (estimateTokens(system) < 4200) {
@@ -63,19 +64,19 @@ export async function generateValidatedPaper({ subject, paper, mode, topic, tele
   draft = fixMarkTotals(draft);
   if (targetMarks) draft = normalizeMarks(draft, targetMarks);
 
-  // ── Deterministic validation ──────────────────────────────────────────────
+  // ── Verification pass: universal validators then subject validators ───────
   await onStatus('validating');
-  let validation = runAllValidators(draft, subject, paper, targetMarks);
-  telemetry.validatorFailures = validation.failures.map((f) => f.reason);
+  let verification = runVerification(draft, { subject, paper });
+  telemetry.validatorFailures = verification.failures.map((f) => f.reason);
 
-  // ── Pass 2: targeted repair ───────────────────────────────────────────────
-  if (!validation.passed && mode !== 'topic') {
+  // ── Repair: targeted per-question, Haiku then Sonnet escalation ──────────
+  if (!verification.passed && mode !== 'topic') {
     await onStatus('repairing');
-    draft = await repairDraft({ draft, validation, system, telemetry, callModel, getBankQuestion, subject, paper });
+    draft = await repairDraft({ draft, verification, system, telemetry, callModel, getBankQuestion, subject, paper, fixes });
     draft = fixMarkTotals(draft);
     if (targetMarks) draft = normalizeMarks(draft, targetMarks);
-    // Re-run the FULL deterministic layer after repairs before accepting.
-    validation = runAllValidators(draft, subject, paper, targetMarks);
+    // Re-run the FULL verification layer (universal + subject) after repairs.
+    verification = runVerification(draft, { subject, paper });
   }
 
   // ── Quality verification (non-deterministically-checkable subjects) ──────
@@ -84,10 +85,10 @@ export async function generateValidatedPaper({ subject, paper, mode, topic, tele
     await onStatus('quality_check');
     quality = await runQualityPass({ draft, subject, paper, system, telemetry, callModel });
     if (quality && !quality.quality_pass && Array.isArray(quality.issues) && quality.issues.length) {
-      draft = await repairFlaggedQuestions({ draft, issues: quality.issues, system, telemetry, callModel });
+      draft = await repairFlaggedQuestions({ draft, issues: quality.issues, system, telemetry, callModel, fixes });
       draft = fixMarkTotals(draft);
       if (targetMarks) draft = normalizeMarks(draft, targetMarks);
-      validation = runAllValidators(draft, subject, paper, targetMarks);
+      verification = runVerification(draft, { subject, paper });
     }
     telemetry.qualityPass = quality?.quality_pass ?? null;
   }
@@ -97,10 +98,15 @@ export async function generateValidatedPaper({ subject, paper, mode, topic, tele
     ? draft
     : await correctSolutions({ draft, subject, system, telemetry, callModel });
 
-  telemetry.finalValidationPassed = validation.passed;
-  telemetry.finalValidationFailures = validation.failures.map((f) => f.reason);
+  // Attach the accumulated fixes to the final report.
+  verification.report.fixes_applied = fixes;
+  verification.report.final_passed = verification.passed;
 
-  return { paperJSON, finalValidation: validation, quality };
+  telemetry.finalValidationPassed = verification.passed;
+  telemetry.finalValidationFailures = verification.failures.map((f) => f.reason);
+  telemetry.verificationReportSummary = verification.report.summary;
+
+  return { paperJSON, finalValidation: verification, quality, verification_report: verification.report };
 }
 
 // ── Pass 1: draft generation (STRICTLY SEQUENTIAL) ───────────────────────────
@@ -157,17 +163,18 @@ async function generateSection({ subject, paper, system, userMessage, telemetry,
 
 // ── Pass 2: targeted repair (sequential, per-question) ───────────────────────
 
-async function repairDraft({ draft, validation, system, telemetry, callModel, getBankQuestion, subject, paper }) {
+async function repairDraft({ draft, verification, system, telemetry, callModel, getBankQuestion, subject, paper, fixes }) {
   const questions = [...draft.questions];
-  const byQuestion = { ...validation.byQuestion };
-  const failedNumbers = [...validation.failedQuestionNumbers];
+  const byQuestion = { ...verification.byQuestion };
+  const failedNumbers = [...verification.failedQuestionNumbers];
 
-  // Paper-level "missing required topic" failures aren't tied to a question —
-  // assign each one to a question to regenerate (prefer a duplicate-topic
+  // Paper-level "required topic missing/not covered" failures aren't tied to a
+  // question — assign each to a question to regenerate (prefer a duplicate-topic
   // question, else the last question), keeping repair per-question.
   for (const reason of (byQuestion.__paper__ || [])) {
-    const m = reason.match(/Required topic missing: "(.+)"/);
+    const m = reason.match(/topic "([^"]+)" is not covered|Required topic missing: "([^"]+)"/i);
     if (!m) continue;
+    const missingTopic = m[1] || m[2];
     const seen = new Set();
     let target = questions[questions.length - 1];
     for (const q of questions) {
@@ -178,7 +185,7 @@ async function repairDraft({ draft, validation, system, telemetry, callModel, ge
     if (!target) continue;
     const qn = target.questionNumber;
     if (!byQuestion[qn]) byQuestion[qn] = [];
-    byQuestion[qn].push(`Replace this question with one on the topic "${m[1]}" (compulsory for this paper), keeping the same question number and total marks.`);
+    byQuestion[qn].push(`Replace this question with one on the topic "${missingTopic}" (compulsory for this paper), keeping the same question number and total marks.`);
     if (!failedNumbers.includes(qn)) failedNumbers.push(qn);
   }
 
@@ -189,13 +196,18 @@ async function repairDraft({ draft, validation, system, telemetry, callModel, ge
     if (qIdx === -1 || !reasons?.length) continue;
 
     let repaired = null;
+    let usedModel = null;
     for (let attempt = 0; attempt < MAX_REPAIR_ATTEMPTS; attempt++) {
       telemetry.repairIterations = (telemetry.repairIterations || 0) + 1;
+      const model = repairModelForAttempt(attempt); // Haiku first, Sonnet on the last attempt
       try {
-        repaired = await repairQuestion({ question: questions[qIdx], reasons, system, telemetry, callModel, label: `repair:Q${qNum}.${attempt + 1}` });
+        repaired = await repairQuestion({ question: questions[qIdx], reasons, system, telemetry, callModel, model, label: `repair:Q${qNum}.${attempt + 1}` });
+        usedModel = model;
+        appendFix(verification.report, { questionNumber: qNum, action: 'regenerated', model, attempt: attempt + 1, reasons });
+        if (fixes) fixes.push({ question: qNum, action: 'regenerated', model, attempt: attempt + 1, addressed: reasons });
         break;
       } catch (err) {
-        console.warn(`Repair attempt ${attempt + 1} failed for Q${qNum}:`, err.message);
+        console.warn(`Repair attempt ${attempt + 1} (${model}) failed for Q${qNum}:`, err.message);
       }
     }
 
@@ -205,10 +217,12 @@ async function repairDraft({ draft, validation, system, telemetry, callModel, ge
         bankQ.questionNumber = qNum;
         repaired = bankQ;
         telemetry.bankFallbacksUsed = (telemetry.bankFallbacksUsed || 0) + 1;
+        if (fixes) fixes.push({ question: qNum, action: 'bank_fallback', model: null, addressed: reasons });
         console.log(`Q${qNum}: using question-bank fallback`);
       } else {
         console.warn(`Q${qNum}: no bank fallback available, keeping original`);
         repaired = questions[qIdx];
+        if (fixes) fixes.push({ question: qNum, action: 'kept_original', model: null, addressed: reasons });
       }
     }
 
@@ -218,9 +232,9 @@ async function repairDraft({ draft, validation, system, telemetry, callModel, ge
   return { ...draft, questions };
 }
 
-async function repairQuestion({ question, reasons, system, telemetry, callModel, label }) {
+async function repairQuestion({ question, reasons, system, telemetry, callModel, model, label }) {
   const response = await callModel({
-    model: MODELS.verification,
+    model: model || MODELS.repair,
     max_tokens: MAX_TOKENS.repair,
     system, // same cached block — repair instructions live in the system prompt's REPAIR MODE section
     messages: [{ role: 'user', content: buildRepairUserMessage(question, reasons) }],
@@ -260,7 +274,7 @@ async function runQualityPass({ draft, subject, paper, system, telemetry, callMo
   }
 }
 
-async function repairFlaggedQuestions({ draft, issues, system, telemetry, callModel }) {
+async function repairFlaggedQuestions({ draft, issues, system, telemetry, callModel, fixes }) {
   const questions = [...draft.questions];
   const byQ = {};
   for (const issue of issues) {
@@ -272,14 +286,17 @@ async function repairFlaggedQuestions({ draft, issues, system, telemetry, callMo
     const qIdx = questions.findIndex((q) => q.questionNumber === Number(qNum));
     if (qIdx === -1) continue;
     telemetry.repairIterations = (telemetry.repairIterations || 0) + 1;
+    const model = MODELS.repair; // quality regeneration: one attempt on Haiku
     try {
       // One regeneration attempt per quality-flagged question.
       questions[qIdx] = await repairQuestion({
-        question: questions[qIdx], reasons, system, telemetry, callModel,
+        question: questions[qIdx], reasons, system, telemetry, callModel, model,
         label: `quality-repair:Q${qNum}`,
       });
+      if (fixes) fixes.push({ question: Number(qNum), action: 'quality_regenerated', model, attempt: 1, addressed: reasons });
     } catch (err) {
       console.warn(`Quality repair failed for Q${qNum}, keeping original:`, err.message);
+      if (fixes) fixes.push({ question: Number(qNum), action: 'kept_original', model: null, addressed: reasons });
     }
   }
 
