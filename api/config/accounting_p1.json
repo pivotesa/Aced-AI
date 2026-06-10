@@ -1,0 +1,65 @@
+{
+  "id": "accounting_p1",
+  "subject": "Accounting",
+  "paper": "Paper 1",
+  "paper_total": 300,
+  "duration": "3 hours",
+  "mark_bands": {
+    "recall": [1, 2],
+    "single_step": [2, 3],
+    "multi_step": [4, 6],
+    "extended": [7, null]
+  },
+  "topics": [
+    {
+      "name": "Financial statements",
+      "min_marks": 50,
+      "max_marks": 130,
+      "required_subtopics": ["income statement", "balance sheet", "notes to the financial statements", "year-end adjustments"]
+    },
+    {
+      "name": "Asset disposal",
+      "min_marks": 0,
+      "max_marks": 40,
+      "required_subtopics": ["depreciation", "asset disposal account", "fixed asset note"]
+    },
+    {
+      "name": "Bank reconciliation",
+      "min_marks": 0,
+      "max_marks": 45,
+      "required_subtopics": ["bank reconciliation statement", "outstanding deposits and cheques", "errors and omissions"]
+    },
+    {
+      "name": "Debtors and creditors",
+      "min_marks": 0,
+      "max_marks": 45,
+      "required_subtopics": ["control accounts", "reconciliation", "age analysis"]
+    },
+    {
+      "name": "VAT",
+      "min_marks": 0,
+      "max_marks": 30,
+      "required_subtopics": ["VAT calculations", "VAT control account"]
+    },
+    {
+      "name": "Budgets and projections",
+      "min_marks": 0,
+      "max_marks": 60,
+      "required_subtopics": ["cash budget", "projected income statement", "debtors collection schedule"]
+    },
+    {
+      "name": "Interpretation of financial statements",
+      "min_marks": 30,
+      "max_marks": 90,
+      "required_subtopics": ["financial indicators (liquidity, solvency, profitability)", "cash flow statement", "commentary and audit reports"]
+    }
+  ],
+  "format_rules": {
+    "statements_must_balance": true,
+    "ratios_must_be_computable": true
+  },
+  "_todo": [
+    "TODO: Verify topic mark ranges against the official IEB Accounting Paper 1 SAG. Accounting papers vary the question mix year to year (not every topic appears every year), so most topics are set optional (min 0) with only Financial statements and Interpretation compulsory — confirm this matches the current SAG's compulsory/optional structure.",
+    "TODO: Confirm the paper total (300) and duration for the current IEB Accounting Paper 1 — some sittings split into a 150-mark Paper 1 plus a separate paper."
+  ]
+}

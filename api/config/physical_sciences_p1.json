@@ -1,0 +1,69 @@
+{
+  "id": "physical_sciences_p1",
+  "subject": "Physical Sciences",
+  "paper": "Physics",
+  "aliases": { "papers": ["Paper 1", "P1"] },
+  "paper_total": 150,
+  "duration": "3 hours",
+  "mark_bands": {
+    "recall": [1, 2],
+    "single_step": [2, 3],
+    "multi_step": [4, 6],
+    "extended": [7, null]
+  },
+  "topics": [
+    {
+      "name": "Momentum and impulse",
+      "min_marks": 15,
+      "max_marks": 40,
+      "required_subtopics": ["momentum", "impulse", "conservation of momentum", "collisions"]
+    },
+    {
+      "name": "Work, energy and power",
+      "min_marks": 15,
+      "max_marks": 40,
+      "required_subtopics": ["work-energy theorem", "conservation of energy", "power"]
+    },
+    {
+      "name": "Doppler effect",
+      "min_marks": 0,
+      "max_marks": 20,
+      "required_subtopics": ["Doppler effect with sound", "applications and red shift"]
+    },
+    {
+      "name": "Electrostatics",
+      "min_marks": 10,
+      "max_marks": 35,
+      "required_subtopics": ["Coulomb's law", "electric fields"]
+    },
+    {
+      "name": "Electric circuits",
+      "min_marks": 15,
+      "max_marks": 40,
+      "required_subtopics": ["Ohm's law", "series and parallel circuits", "internal resistance and emf", "power and energy"]
+    },
+    {
+      "name": "Electromagnetism",
+      "min_marks": 0,
+      "max_marks": 30,
+      "required_subtopics": ["generators (AC/DC)", "motors", "rms values"]
+    },
+    {
+      "name": "Optical phenomena",
+      "min_marks": 0,
+      "max_marks": 30,
+      "required_subtopics": ["photoelectric effect", "emission and absorption spectra"]
+    }
+  ],
+  "format_rules": {
+    "require_units_on_numeric_answers": true,
+    "plausibility": {
+      "max_speed_m_s": 299792458,
+      "non_negative_quantities": ["mass", "kelvin temperature", "time", "wavelength", "frequency", "resistance"]
+    }
+  },
+  "_todo": [
+    "TODO: This is the user's 'Physical Sciences P1' (IEB Physics paper). Verify topic mark ranges against the official IEB Physical Sciences Paper 1 (Physics) SAG. NSC weighting is roughly: Mechanics (momentum/impulse + work/energy/power) ~63, Waves/sound/light incl. Doppler & photoelectric ~?, Electricity & magnetism ~55 — confirm exact splits.",
+    "TODO: Confirm whether Vertical projectile motion and Newton's Laws should appear as separate Mechanics topics in Paper 1 (they are part of the Physics paper but not in the app's current topic list)."
+  ]
+}

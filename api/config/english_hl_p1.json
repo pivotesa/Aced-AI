@@ -1,0 +1,42 @@
+{
+  "id": "english_hl_p1",
+  "subject": "English Home Language",
+  "paper": "Paper 1: Language",
+  "paper_total": 70,
+  "duration": "2 hours",
+  "mark_bands": {
+    "recall": [1, 2],
+    "single_step": [2, 3],
+    "multi_step": [4, 6],
+    "extended": [7, null]
+  },
+  "topics": [
+    {
+      "name": "Comprehension",
+      "min_marks": 20,
+      "max_marks": 40,
+      "required_subtopics": ["literal meaning", "inferential meaning", "critical/evaluative reading", "vocabulary in context"]
+    },
+    {
+      "name": "Summary",
+      "min_marks": 5,
+      "max_marks": 20,
+      "required_subtopics": ["main-idea extraction", "own words", "word-limit adherence"]
+    },
+    {
+      "name": "Language use and conventions",
+      "min_marks": 20,
+      "max_marks": 40,
+      "required_subtopics": ["editing and error correction", "figures of speech", "visual / advertising text analysis", "critical language awareness"]
+    }
+  ],
+  "format_rules": {
+    "summary_sections_required": 1,
+    "require_visual_text_question": true,
+    "editing_one_error_per_mark": true
+  },
+  "_todo": [
+    "TODO: Verify against the IEB English HL Paper 1 SAG. Common weighting: Comprehension 30, Summary 10, Language structures (incl. visual/advertising text) 30 = 70. Ranges widened around those — confirm exact splits and whether the visual text sits inside Comprehension (Section A) or Language (Section C) in the current SAG.",
+    "TODO: Confirm the prescribed summary word limit and number of points (commonly 7 points / 90 words) so the summary validator can check point count."
+  ]
+}

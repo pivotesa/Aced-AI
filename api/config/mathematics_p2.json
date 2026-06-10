@@ -1,0 +1,44 @@
+{
+  "id": "mathematics_p2",
+  "subject": "Mathematics",
+  "paper": "Paper 2",
+  "paper_total": 150,
+  "duration": "3 hours",
+  "mark_bands": {
+    "recall": [1, 2],
+    "single_step": [2, 3],
+    "multi_step": [4, 6],
+    "extended": [7, null]
+  },
+  "topics": [
+    {
+      "name": "Statistics",
+      "min_marks": 20,
+      "max_marks": 45,
+      "required_subtopics": ["measures of central tendency and dispersion", "ogives", "box-and-whisker plots", "variance and standard deviation", "regression and correlation"]
+    },
+    {
+      "name": "Analytical geometry",
+      "min_marks": 20,
+      "max_marks": 45,
+      "required_subtopics": ["distance, midpoint and gradient", "equation of a line", "equation of a circle", "tangents to a circle"]
+    },
+    {
+      "name": "Trigonometry",
+      "min_marks": 35,
+      "max_marks": 65,
+      "required_subtopics": ["trig identities", "compound and double angles", "general solutions", "sine, cosine and area rules", "3D trigonometry"]
+    },
+    {
+      "name": "Euclidean geometry",
+      "min_marks": 25,
+      "max_marks": 55,
+      "required_subtopics": ["circle theorems", "proofs of theorems", "similarity and proportionality", "riders"]
+    }
+  ],
+  "format_rules": {},
+  "_todo": [
+    "TODO: Verify against the IEB Mathematics Paper 2 SAG. Typical NSC weighting: Statistics ~20, Analytical geometry ~40, Trigonometry ~50, Euclidean geometry ~40. Trig (2D) and Trig (3D) are listed separately in the app subject list but combined here as one 'Trigonometry' topic — confirm whether they should be split with their own mark ranges.",
+    "TODO: Confirm whether a proof of at least one circle theorem is compulsory (it usually is) and should be enforced as a required_subtopic check."
+  ]
+}

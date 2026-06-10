@@ -1,0 +1,53 @@
+{
+  "id": "life_sciences_p2",
+  "subject": "Life Sciences",
+  "paper": "Paper 2",
+  "aliases": { "subjects": ["Biology"] },
+  "paper_total": 150,
+  "duration": "2.5 hours",
+  "mark_bands": {
+    "recall": [1, 2],
+    "single_step": [2, 3],
+    "multi_step": [4, 6],
+    "extended": [7, null]
+  },
+  "topics": [
+    {
+      "name": "Nervous system",
+      "min_marks": 20,
+      "max_marks": 50,
+      "required_subtopics": ["neurons", "reflex arc", "central and autonomic nervous system", "receptors (eye and ear)"]
+    },
+    {
+      "name": "Endocrine system",
+      "min_marks": 10,
+      "max_marks": 40,
+      "required_subtopics": ["endocrine glands and hormones", "hormonal control"]
+    },
+    {
+      "name": "Homeostasis",
+      "min_marks": 20,
+      "max_marks": 50,
+      "required_subtopics": ["negative feedback", "thermoregulation", "osmoregulation", "blood glucose regulation"]
+    },
+    {
+      "name": "Human impact on environment",
+      "min_marks": 0,
+      "max_marks": 40,
+      "required_subtopics": ["water and air quality", "loss of biodiversity", "human population growth"]
+    },
+    {
+      "name": "Ecosystems",
+      "min_marks": 0,
+      "max_marks": 45,
+      "required_subtopics": ["energy flow", "nutrient cycles", "population ecology"]
+    }
+  ],
+  "format_rules": {
+    "diagram_questions_need_text": true
+  },
+  "_todo": [
+    "TODO: 'Biology P2' is examined by the IEB as 'Life Sciences Paper 2'. Verify the Knowledge-area weighting against the official IEB Life Sciences SAG.",
+    "TODO: Confirm whether 'Human impact on environment' and 'Ecosystems' are both in Paper 2 in the current SAG, or whether one sits in Paper 1; min set to 0 (optional) pending confirmation."
+  ]
+}

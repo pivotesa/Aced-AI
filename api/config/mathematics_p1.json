@@ -1,0 +1,65 @@
+{
+  "id": "mathematics_p1",
+  "subject": "Mathematics",
+  "paper": "Paper 1",
+  "paper_total": 150,
+  "duration": "3 hours",
+  "mark_bands": {
+    "recall": [1, 2],
+    "single_step": [2, 3],
+    "multi_step": [4, 6],
+    "extended": [7, null]
+  },
+  "topics": [
+    {
+      "name": "Algebra and equations",
+      "min_marks": 15,
+      "max_marks": 45,
+      "required_subtopics": ["exponents and surds", "quadratic equations", "quadratic inequalities", "simultaneous equations", "nature of roots"]
+    },
+    {
+      "name": "Patterns and sequences",
+      "min_marks": 0,
+      "max_marks": 35,
+      "required_subtopics": ["arithmetic sequences and series", "geometric sequences and series", "sigma notation", "sum to infinity"]
+    },
+    {
+      "name": "Functions and graphs",
+      "min_marks": 20,
+      "max_marks": 45,
+      "required_subtopics": ["parabola", "hyperbola", "exponential function", "inverse functions"]
+    },
+    {
+      "name": "Logarithms",
+      "min_marks": 0,
+      "max_marks": 20,
+      "required_subtopics": ["laws of logarithms", "logarithmic and exponential equations", "logarithmic graphs"]
+    },
+    {
+      "name": "Financial mathematics",
+      "min_marks": 10,
+      "max_marks": 30,
+      "required_subtopics": ["compound growth and decay", "annuities (present and future value)", "sinking funds", "loan amortisation"]
+    },
+    {
+      "name": "Calculus",
+      "min_marks": 25,
+      "max_marks": 45,
+      "required_subtopics": ["first principles", "differentiation rules", "cubic graphs", "optimisation", "rates of change"]
+    },
+    {
+      "name": "Probability",
+      "min_marks": 0,
+      "max_marks": 30,
+      "required_subtopics": ["addition rule", "independent and dependent events", "Venn diagrams", "tree diagrams", "fundamental counting principle"]
+    }
+  ],
+  "format_rules": {
+    "calculus_min_strands": 2,
+    "calculus_strands": ["first principles", "differentiation rules", "cubic graphs", "optimisation"]
+  },
+  "_todo": [
+    "TODO: Verify topic mark ranges against the official IEB Mathematics SAG. NSC/IEB guidance weights Algebra & equations ~25, Patterns & sequences ~25, Functions & graphs ~35, Finance/growth/decay ~15, Differential calculus ~35, Counting & probability ~15 — ranges here are widened around those midpoints and need confirming.",
+    "TODO: Confirm whether Logarithms is examined as a standalone topic or folded into Functions & graphs in the current IEB SAG."
+  ]
+}

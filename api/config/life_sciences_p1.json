@@ -1,0 +1,53 @@
+{
+  "id": "life_sciences_p1",
+  "subject": "Life Sciences",
+  "paper": "Paper 1",
+  "aliases": { "subjects": ["Biology"] },
+  "paper_total": 150,
+  "duration": "2.5 hours",
+  "mark_bands": {
+    "recall": [1, 2],
+    "single_step": [2, 3],
+    "multi_step": [4, 6],
+    "extended": [7, null]
+  },
+  "topics": [
+    {
+      "name": "DNA and RNA",
+      "min_marks": 15,
+      "max_marks": 45,
+      "required_subtopics": ["DNA structure and replication", "RNA and transcription", "translation and protein synthesis", "mutations"]
+    },
+    {
+      "name": "Meiosis",
+      "min_marks": 10,
+      "max_marks": 35,
+      "required_subtopics": ["stages of meiosis", "crossing over", "non-disjunction", "importance for variation"]
+    },
+    {
+      "name": "Reproduction",
+      "min_marks": 0,
+      "max_marks": 40,
+      "required_subtopics": ["human reproductive systems", "gametogenesis", "menstrual cycle", "gestation and the placenta"]
+    },
+    {
+      "name": "Genetics and inheritance",
+      "min_marks": 25,
+      "max_marks": 55,
+      "required_subtopics": ["Mendelian genetics", "monohybrid and dihybrid crosses", "dominance and co-dominance", "sex-linked inheritance", "pedigree diagrams"]
+    },
+    {
+      "name": "Evolution",
+      "min_marks": 20,
+      "max_marks": 50,
+      "required_subtopics": ["natural selection", "evidence for evolution", "speciation", "human evolution"]
+    }
+  ],
+  "format_rules": {
+    "diagram_questions_need_text": true
+  },
+  "_todo": [
+    "TODO: 'Biology' is examined by the IEB as 'Life Sciences' — this config covers the user's requested 'Biology P1'. Verify the Knowledge-area weighting against the official IEB Life Sciences SAG (the SAG groups content into Knowledge Areas with prescribed Paper 1 vs Paper 2 splits that change periodically).",
+    "TODO: Confirm whether Reproduction sits in Paper 1 or Paper 2 in the current SAG — it is placed in Paper 1 (optional) here but the split is reviewed regularly."
+  ]
+}

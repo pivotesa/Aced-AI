@@ -1,0 +1,57 @@
+{
+  "id": "physical_sciences_p2",
+  "subject": "Physical Sciences",
+  "paper": "Chemistry",
+  "aliases": { "papers": ["Paper 2", "P2"] },
+  "paper_total": 150,
+  "duration": "3 hours",
+  "mark_bands": {
+    "recall": [1, 2],
+    "single_step": [2, 3],
+    "multi_step": [4, 6],
+    "extended": [7, null]
+  },
+  "topics": [
+    {
+      "name": "Organic chemistry",
+      "min_marks": 30,
+      "max_marks": 70,
+      "required_subtopics": ["IUPAC nomenclature", "functional groups and isomers", "physical properties", "organic reactions", "esterification"]
+    },
+    {
+      "name": "Chemical equilibrium",
+      "min_marks": 15,
+      "max_marks": 45,
+      "required_subtopics": ["Le Chatelier's principle", "equilibrium constant Kc", "equilibrium calculations"]
+    },
+    {
+      "name": "Acids and bases",
+      "min_marks": 15,
+      "max_marks": 45,
+      "required_subtopics": ["acid-base theories", "pH calculations", "titrations", "salt hydrolysis"]
+    },
+    {
+      "name": "Electrochemistry",
+      "min_marks": 15,
+      "max_marks": 45,
+      "required_subtopics": ["galvanic cells", "electrolytic cells", "standard electrode potentials", "EMF calculations"]
+    },
+    {
+      "name": "Chemical industry",
+      "min_marks": 0,
+      "max_marks": 30,
+      "required_subtopics": ["fertiliser industry", "Haber and contact processes", "eutrophication"]
+    }
+  ],
+  "format_rules": {
+    "require_units_on_numeric_answers": true,
+    "plausibility": {
+      "max_speed_m_s": 299792458,
+      "non_negative_quantities": ["mass", "kelvin temperature", "time", "concentration", "pH"]
+    }
+  },
+  "_todo": [
+    "TODO: This is the user's 'Physical Sciences P2' (IEB Chemistry paper). Verify topic mark ranges against the official IEB Physical Sciences Paper 2 (Chemistry) SAG. Organic chemistry is the largest topic; confirm exact weighting and whether 'Rate and extent of reaction' should be a separate topic.",
+    "TODO: Confirm the Chemical industry / fertiliser content is examinable in the current SAG (it has moved between examinable and contextual in past revisions)."
+  ]
+}
