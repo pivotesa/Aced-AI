@@ -40,7 +40,6 @@ function renderPart(qNum, p) {
   const exprHTML = p.expression
     ? `<div class="part-expression">${escapeHTML(p.expression)}</div>`
     : '';
-  const solutionHTML = p.solution ? renderSolution(partId, p.solution) : '';
 
   return `
     <div class="question-part" data-part-id="${partId}">
@@ -50,33 +49,24 @@ function renderPart(qNum, p) {
       </div>
       <p class="part-text">${p.instruction}</p>
       ${exprHTML}
-      <textarea class="answer-input" data-part-id="${partId}" placeholder="Write your answer and working here…" rows="4"></textarea>
-      ${solutionHTML}
     </div>`;
 }
 
-function renderSolution(partId, solution) {
-  const steps = solution.steps.map(s => `<div>${escapeHTML(s)}</div>`).join('');
+export function renderAnswerSection() {
   return `
-    <button class="solution-toggle" data-sol="${partId}" onclick="toggleSolution('${partId}')">
-      ▶ Show solution
-    </button>
-    <div class="solution-block hidden" id="sol_${partId}">
-      <div class="solution-steps">${steps}</div>
-      <div class="solution-answer">∴ ${escapeHTML(solution.answer)}</div>
+    <div class="answer-section" id="answer-section">
+      <h3 class="answer-section-title">Submit Your Answers</h3>
+      <p class="answer-section-hint">Type all your answers below, or upload a photo/document of your written work. Label each answer clearly, e.g. <strong>Q1(a):</strong> your answer here.</p>
+      <textarea id="bulk-answer-input" class="bulk-answer-input" placeholder="Q1(a): …&#10;Q1(b): …&#10;Q2(a): …" rows="12"></textarea>
+      <div class="answer-upload-row">
+        <label class="answer-upload-label" for="answer-file-input">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload photo or PDF
+        </label>
+        <input type="file" id="answer-file-input" accept="image/*,.pdf" style="display:none">
+        <span id="answer-file-name" class="answer-file-name"></span>
+      </div>
     </div>`;
-}
-
-export function collectAnswers(paperJSON) {
-  const answers = {};
-  paperJSON.questions.forEach(q => {
-    q.parts.forEach(p => {
-      const partId = `q${q.questionNumber}_${p.part}`;
-      const el = document.querySelector(`.answer-input[data-part-id="${partId}"]`);
-      answers[partId] = el ? el.value.trim() : '';
-    });
-  });
-  return answers;
 }
 
 export function renderResults(markingJSON, paperJSON) {

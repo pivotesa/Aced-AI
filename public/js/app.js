@@ -1,6 +1,6 @@
 import { onAuth, signInEmail, signUpEmail, signInGoogle, signOutUser, getUserDoc, incrementPapersGenerated, getRecentSessions, saveSession, updateSession, getTopicPerformance, updateTopicPerformance } from './firebase.js';
 import { generatePaper, markPaper, sendTutorMessage, createSubscription } from './api.js';
-import { renderPaper, collectAnswers, renderResults } from './render.js';
+import { renderPaper, renderAnswerSection, renderResults } from './render.js';
 import { getPapers, getTopics } from './subjects.js';
 
 // ── STATE ───────────────────────────────────────────────────
@@ -61,7 +61,6 @@ export function navigate(viewId) {
 
 // Make navigate available to inline handlers
 window.navigate = navigate;
-window.toggleSolution = toggleSolution;
 
 // ── AUTH HANDLERS ────────────────────────────────────────────
 document.getElementById('form-signin').addEventListener('submit', async e => {
@@ -250,11 +249,11 @@ document.getElementById('form-generate').addEventListener('submit', async e => {
   e.preventDefault();
   if (!currentUser) return;
 
-  // Free tier gate
-  if (userDoc?.tier === 'free' && (userDoc.papersGenerated || 0) >= 5) {
-    showUpgradeModal();
-    return;
-  }
+  // Free tier gate temporarily disabled
+  // if (userDoc?.tier === 'free' && (userDoc.papersGenerated || 0) >= 5) {
+  //   showUpgradeModal();
+  //   return;
+  // }
 
   const subject = genSubject.value;
   const paper   = genPaper.value;
@@ -321,11 +320,19 @@ document.getElementById('form-generate').addEventListener('submit', async e => {
 // ── PAPER VIEW ───────────────────────────────────────────────
 function renderPaperView(paperJSON, subject, paper) {
   document.getElementById('paper-meta').textContent = `${subject} — ${paper} · ${paperJSON.totalMarks} marks · ${paperJSON.duration}`;
-  document.getElementById('paper-content').innerHTML = renderPaper(paperJSON);
+  const contentEl = document.getElementById('paper-content');
+  contentEl.innerHTML = renderPaper(paperJSON) + renderAnswerSection();
+
+  // File upload label update
+  document.getElementById('answer-file-input').addEventListener('change', e => {
+    const file = e.target.files[0];
+    document.getElementById('answer-file-name').textContent = file ? file.name : '';
+    if (file) document.getElementById('bulk-answer-input').value = '';
+  });
 
   // Re-render KaTeX after DOM update
   if (window.renderMathInElement) {
-    window.renderMathInElement(document.getElementById('paper-content'), {
+    window.renderMathInElement(contentEl, {
       delimiters: [
         { left: '$$', right: '$$', display: true },
         { left: '$', right: '$', display: false }
@@ -340,10 +347,13 @@ document.getElementById('btn-print').addEventListener('click', () => window.prin
 document.getElementById('btn-submit-paper').addEventListener('click', async () => {
   if (!currentPaper) return;
   const { paperJSON, sessionId } = currentPaper;
-  const answers = collectAnswers(paperJSON);
-  const hasAny = Object.values(answers).some(v => v.length > 0);
-  if (!hasAny) {
-    toast('Write at least one answer before submitting.', 'error');
+
+  const bulkText = document.getElementById('bulk-answer-input')?.value?.trim() || '';
+  const fileInput = document.getElementById('answer-file-input');
+  const file = fileInput?.files?.[0] || null;
+
+  if (!bulkText && !file) {
+    toast('Enter your answers or upload a photo/document before submitting.', 'error');
     return;
   }
 
@@ -352,7 +362,15 @@ document.getElementById('btn-submit-paper').addEventListener('click', async () =
   btn.textContent = 'Marking…';
 
   try {
-    const { markingJSON } = await markPaper(paperJSON, answers);
+    let answerPayload;
+    if (file) {
+      const base64 = await fileToBase64(file);
+      const mediaType = file.type || 'image/jpeg';
+      answerPayload = { paperJSON, answerImage: { mediaType, data: base64 } };
+    } else {
+      answerPayload = { paperJSON, bulkAnswers: bulkText };
+    }
+    const { markingJSON } = await markPaper(answerPayload);
     currentMarking = markingJSON;
 
     // Persist marking
@@ -402,21 +420,6 @@ document.getElementById('btn-new-paper').addEventListener('click', () => {
   currentPaper = null; currentMarking = null;
   navigate('dashboard');
 });
-
-// ── SOLUTION TOGGLE ──────────────────────────────────────────
-function toggleSolution(partId) {
-  const block = document.getElementById(`sol_${partId}`);
-  const btn = document.querySelector(`[data-sol="${partId}"]`);
-  if (!block || !btn) return;
-  const isHidden = block.classList.contains('hidden');
-  block.classList.toggle('hidden', !isHidden);
-  btn.textContent = isHidden ? '▼ Hide solution' : '▶ Show solution';
-  if (isHidden && window.renderMathInElement) {
-    window.renderMathInElement(block, {
-      delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }]
-    });
-  }
-}
 
 // ── TUTOR ────────────────────────────────────────────────────
 document.getElementById('btn-tutor-send').addEventListener('click', sendTutorMsg);
@@ -564,6 +567,15 @@ function toast(msg, type = '') {
 }
 
 // ── HELPERS ───────────────────────────────────────────────────
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 function escapeHTML(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')

@@ -774,9 +774,80 @@ body {
 .gen-step.done { color: #4ade80; border-color: #4ade80; background: rgba(74,222,128,0.08); }
 .gen-hint { font-size: 0.78rem; color: var(--text-muted); margin: 0; }
 
+/* ── ANSWER SECTION ──────────────────────────────────────── */
+.answer-section {
+  margin-top: 32px;
+  padding: 28px 24px;
+  background: var(--navy-lt);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.answer-section-title {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.answer-section-hint {
+  margin: 0 0 16px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.bulk-answer-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  background: var(--navy);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: vertical;
+  line-height: 1.6;
+  transition: border-color 0.2s;
+}
+.bulk-answer-input:focus {
+  outline: none;
+  border-color: var(--teal);
+}
+.answer-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+.answer-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  background: var(--navy);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+.answer-upload-label:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+.answer-file-name {
+  font-size: 0.82rem;
+  color: var(--teal);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
 /* ── PRINT ────────────────────────────────────────────────── */
 @media print {
-  #nav, .paper-toolbar, .answer-input, .solution-toggle, #btn-submit-paper { display: none !important; }
+  #nav, .paper-toolbar, .answer-section, #btn-submit-paper { display: none !important; }
   .view { display: block !important; }
   #view-paper { display: block !important; }
   .page-container { padding-top: 0; }

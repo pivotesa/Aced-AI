@@ -26,8 +26,8 @@ export async function generatePaper(subject, paper, mode, topic) {
   return apiFetch('/api/generate-paper', { subject, paper, mode, topic });
 }
 
-export async function markPaper(paperJSON, answers) {
-  return apiFetch('/api/mark-paper', { paperJSON, answers });
+export async function markPaper(payload) {
+  return apiFetch('/api/mark-paper', payload);
 }
 
 export async function sendTutorMessage(messages, paperJSON, subject, paper) {
