@@ -1,8 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { verifyToken } from './_auth.js';
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const MODEL = 'claude-sonnet-4-6';
+import { MODELS } from './_config.js';
+import { callClaude } from './_anthropic-client.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,11 +14,13 @@ export default async function handler(req, res) {
     res.status(401).json({ error: 'Unauthorised' }); return;
   }
 
-  const { paperJSON, answers } = req.body || {};
-  if (!paperJSON || !answers) { res.status(400).json({ error: 'paperJSON and answers are required' }); return; }
+  const { paperJSON, bulkAnswers, answerImage } = req.body || {};
+  if (!paperJSON || (!bulkAnswers && !answerImage)) {
+    res.status(400).json({ error: 'paperJSON and answers are required' }); return;
+  }
 
   try {
-    const markingJSON = await markAnswers(paperJSON, answers);
+    const markingJSON = await markAnswers(paperJSON, bulkAnswers, answerImage);
     res.status(200).json({ markingJSON });
   } catch (err) {
     console.error('Marking error:', err);
@@ -28,20 +28,17 @@ export default async function handler(req, res) {
   }
 }
 
-async function markAnswers(paperJSON, answers) {
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: 6000,
-    system: `You are an IEB Grade 12 marking expert. Mark student answers strictly but fairly, following IEB marking guidelines. Award method marks where working is correct even if the final answer is wrong. Be specific in feedback — reference the actual error made.`,
-    messages: [{
-      role: 'user',
-      content: `Mark these student answers for the following IEB ${paperJSON.subject} ${paperJSON.paper} paper.
+async function markAnswers(paperJSON, bulkAnswers, answerImage) {
+  const systemPrompt = `You are an IEB Grade 12 marking expert. Mark student answers strictly but fairly, following IEB marking guidelines. Award method marks where working is correct even if the final answer is wrong. Be specific in feedback — reference the actual error made.`;
+
+  const instruction = `Mark these student answers for the following IEB ${paperJSON.subject} ${paperJSON.paper} paper.
 
 PAPER (with solutions and marking criteria):
 ${JSON.stringify(paperJSON, null, 2)}
 
-STUDENT ANSWERS (keyed by questionNumber_part, e.g. "q1_a"):
-${JSON.stringify(answers, null, 2)}
+${bulkAnswers
+  ? `STUDENT ANSWERS:\n${bulkAnswers}`
+  : `STUDENT ANSWERS: (see attached image — read the student's handwritten or typed answers from it)`}
 
 Return ONLY valid JSON (no markdown):
 {
@@ -63,11 +60,23 @@ Return ONLY valid JSON (no markdown):
   "generalFeedback": "<2-3 sentence overall feedback>",
   "weakTopics": ["<topic>"],
   "strongTopics": ["<topic>"]
-}`
-    }]
-  });
+}`;
 
-  const raw = response.content[0].text.trim();
+  const userContent = answerImage
+    ? [
+        { type: 'image', source: { type: 'base64', media_type: answerImage.mediaType, data: answerImage.data } },
+        { type: 'text', text: instruction }
+      ]
+    : instruction;
+
+  const response = await callClaude({
+    model: MODELS.marking,
+    max_tokens: 8000,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userContent }]
+  }, null, { label: 'mark-paper' });
+
+  const raw = response.content.find(b => b.type === 'text')?.text?.trim() || '';
   return JSON.parse(extractJSON(raw));
 }
 

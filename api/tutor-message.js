@@ -1,8 +1,7 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { verifyToken, getUserDoc } from './_auth.js';
+import { MODELS } from './_config.js';
+import { callClaude } from './_anthropic-client.js';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const MODEL = 'claude-sonnet-4-6';
 const FREE_MSG_LIMIT = 10;
 
 export default async function handler(req, res) {
@@ -30,12 +29,12 @@ export default async function handler(req, res) {
   const apiMessages = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
 
   try {
-    const response = await client.messages.create({
-      model: MODEL,
+    const response = await callClaude({
+      model: MODELS.tutor,
       max_tokens: 600,
       system: systemPrompt,
       messages: apiMessages
-    });
+    }, null, { label: 'tutor' });
 
     const reply = response.content[0].text.trim();
     res.status(200).json({ reply });

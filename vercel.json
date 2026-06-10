@@ -1,6 +1,10 @@
 {
   "outputDirectory": "public",
+
   "functions": {
+    "api/generate-paper.js": {
+      "maxDuration": 300
+    },
     "api/*.js": {
       "maxDuration": 60
     }
