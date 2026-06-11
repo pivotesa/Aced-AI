@@ -2,26 +2,40 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --navy:     #0D1117;
+  /* ── Brand palette ── */
+  --paper:      #FBFAF5;
+  --paper-deep: #F3F1E8;
+  --ink:        #16181D;
+  --ink-soft:   #4A4D55;
+  --red:        #C8201D;
+  --red-soft:   #FBE9E8;
+  --red-dk:     #A81815;
+  --rule:       #DDD9CC;
+  --highlight:  #FFE96B;
+
+  /* ── Fonts ── */
+  --font-ui:    'Space Grotesk', sans-serif;   /* headings + UI    */
+  --font-serif: 'Tinos', serif;                /* exam-paper cards */
+  --font-mono:  'IBM Plex Mono', monospace;    /* labels           */
+
+  /* ── Existing token names kept alive, remapped to the brand ── */
+  --navy:     #16181D;
   --navy-2:   #161C24;
   --navy-3:   #1E2A35;
-  --bg:       #F4F7F7;
+  --bg:       var(--paper);
   --surface:  #FFFFFF;
-  --ink:      #0D1117;
-  --ink-2:    #3D4752;
+  --ink-2:    var(--ink-soft);
   --ink-3:    #8A9BA8;
+  /* teal stays defined for now; retired in favour of red during step 3 */
   --teal:     #2DD4BF;
   --teal-lt:  #E6FAF8;
   --teal-dk:  #1BA89A;
-  --red:      #EF4444;
   --green:    #22C55E;
   --orange:   #F97316;
-  --border:   rgba(0,0,0,0.08);
-  /* Aliases used by answer/progress panels — previously undefined, which made
-     inputs render dark-on-dark. Mapped to the light theme here. */
+  --border:   var(--rule);
   --text:       var(--ink);
-  --text-muted: var(--ink-3);
-  --navy-lt:    #EEF3F3;
+  --text-muted: var(--ink-soft);
+  --navy-lt:    var(--paper-deep);
   --radius:   10px;
   --shadow:   0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
   --shadow-md:0 4px 16px rgba(0,0,0,0.10);
@@ -29,24 +43,28 @@
 
 html { font-size: 16px; scroll-behavior: smooth; }
 body {
-  font-family: 'Inter', sans-serif;
-  background: var(--bg);
+  font-family: var(--font-ui);
+  background: var(--paper);
   color: var(--ink);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
+/* ── Font helpers ── */
+.serif { font-family: var(--font-serif); }
+.mono  { font-family: var(--font-mono); }
+
 /* ── UTILITIES ────────────────────────────────────────────── */
 .hidden { display: none !important; }
-.teal   { color: var(--teal); }
+.teal   { color: var(--red); }
 
 /* ── BUTTONS ──────────────────────────────────────────────── */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--teal);
-  color: #0D1117;
+  background: var(--ink);
+  color: var(--paper);
   border: none;
   border-radius: 8px;
   padding: 10px 22px;
@@ -57,10 +75,13 @@ body {
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
-.btn-primary:hover { background: var(--teal-dk); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(45,212,191,0.35); }
+.btn-primary:hover { background: #000; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(22,24,29,0.25); }
 .btn-primary:active { transform: translateY(0); }
 .btn-primary.full { width: 100%; justify-content: center; }
 .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+/* Red accent — for the loudest CTAs (Go Pro, Generate). Add class="btn-primary red". */
+.btn-primary.red { background: var(--red); color: #fff; }
+.btn-primary.red:hover { background: var(--red-dk); box-shadow: 0 4px 14px rgba(200,32,29,0.30); }
 
 .btn-ghost {
   background: transparent;
@@ -111,7 +132,7 @@ body {
   font-size: 1.1rem; font-weight: 800;
   letter-spacing: -0.02em; color: #fff;
 }
-.nav-wordmark .teal { color: var(--teal); }
+.nav-wordmark .teal { color: var(--red); }
 
 .nav-center { display: flex; gap: 4px; }
 .nav-btn {
@@ -164,7 +185,7 @@ body {
   font-size: 1.6rem; font-weight: 800;
   letter-spacing: -0.03em; color: #fff;
 }
-.brand-wordmark .teal { color: var(--teal); }
+.brand-wordmark .teal { color: var(--red); }
 
 .auth-headline {
   font-size: 3rem; font-weight: 800;
@@ -181,7 +202,7 @@ body {
   display: flex; align-items: center; gap: 12px;
   color: rgba(255,255,255,0.75); font-size: 0.95rem;
 }
-.feat-icon { color: var(--teal); font-size: 0.75rem; }
+.feat-icon { color: var(--red); font-size: 0.75rem; }
 
 .auth-panel {
   background: var(--bg);
@@ -218,13 +239,13 @@ body {
 .auth-form.hidden { display: none; }
 
 .field { display: flex; flex-direction: column; gap: 6px; }
-.field label { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); letter-spacing: 0.01em; }
+.field label { font-family: var(--font-mono); font-size: 0.72rem; font-weight: 500; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.08em; }
 .field input, .field select, .field textarea {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 0.9rem;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-ui);
   color: var(--ink);
   background: var(--surface);
   outline: none;
@@ -232,8 +253,8 @@ body {
   appearance: auto;
 }
 .field input:focus, .field select:focus, .field textarea:focus {
-  border-color: var(--teal);
-  box-shadow: 0 0 0 3px rgba(45,212,191,0.15);
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(200,32,29,0.15);
 }
 .field select { cursor: pointer; }
 .field textarea { resize: vertical; min-height: 80px; }
@@ -268,7 +289,7 @@ body {
   font-size: 0.75rem; color: var(--ink-3);
   text-align: center; margin-top: 14px; line-height: 1.5;
 }
-.auth-terms a { color: var(--teal); text-decoration: none; }
+.auth-terms a { color: var(--red); text-decoration: none; }
 
 @media (max-width: 860px) {
   .auth-split { grid-template-columns: 1fr; }
@@ -465,7 +486,7 @@ body {
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 0.9rem;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-ui);
   resize: vertical; min-height: 72px;
   outline: none;
   transition: border-color 140ms, box-shadow 140ms;
@@ -674,7 +695,7 @@ body {
   flex: 1;
   border: 1px solid var(--border); border-radius: 8px;
   padding: 10px 14px; font-size: 0.875rem;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-ui);
   resize: none; outline: none;
   transition: border-color 140ms;
   max-height: 160px;
