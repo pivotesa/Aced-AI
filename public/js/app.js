@@ -1,13 +1,14 @@
-import { onAuth, signInEmail, signUpEmail, signInGoogle, signOutUser, getUserDoc, incrementPapersGenerated, getRecentSessions, saveSession, updateSession, getTopicPerformance, updateTopicPerformance } from './firebase.js';
+import { onAuth, signInEmail, signUpEmail, signInGoogle, signOutUser, getUserDoc, incrementPapersGenerated, getRecentSessions, saveSession, updateSession, getTopicPerformance, updateTopicPerformance, uploadSubmissionPhoto, deleteSubmissionPhoto } from './firebase.js';
 import { generatePaper, markPaper, sendTutorMessage, createSubscription } from './api.js';
-import { renderPaper, renderAnswerSection, renderResults } from './render.js';
+import { renderPaper, renderResults, typesetMath } from './render.js';
 import { getPapers, getTopics } from './subjects.js';
 
 // ── STATE ───────────────────────────────────────────────────
 let currentUser = null;
 let userDoc = null;
-let currentPaper = null;      // { paperJSON, sessionId }
+let currentPaper = null;      // { paper, memo, sessionId }
 let currentMarking = null;
+let partPhotos = {};          // partId -> { url, path } uploaded working photos
 let tutorMessages = [];
 let tutorMsgCount = 0;
 
@@ -194,8 +195,12 @@ function renderRecentSessions(sessions) {
       const { getSession } = await import('./firebase.js');
       const session = await getSession(sid);
       if (!session) return;
-      currentPaper = { paperJSON: session.paperJSON, sessionId: sid };
-      renderPaperView(session.paperJSON, session.subject, session.paper);
+      // New sessions store the student `paper` + a `generationId`; the `memo`
+      // is saved only after marking. Old sessions stored a full `paperJSON`.
+      const paper = session.paper || session.paperJSON;
+      const memo  = session.memo || null; // only present once marked
+      currentPaper = { paper, memo, generationId: session.generationId || null, sessionId: sid };
+      renderPaperView(paper, session.subject, session.paper);
       navigate('paper');
     });
   });
@@ -290,17 +295,19 @@ document.getElementById('form-generate').addEventListener('submit', async e => {
   }, 12000);
 
   try {
-    const { paperJSON } = await generatePaper(subject, paper, mode, topic);
+    // Only the student paper + a generationId come back — the memo stays
+    // server-side until the student submits for marking.
+    const { paper: studentPaper, generationId } = await generatePaper(subject, paper, mode, topic);
 
     clearInterval(msgTimer);
     setGenStepDone();
 
-    const sessionId = await saveSession(currentUser.uid, { subject, paper, mode, topic, paperJSON, marking: null });
+    const sessionId = await saveSession(currentUser.uid, { subject, paper, mode, topic, paper: studentPaper, generationId, marking: null });
     await incrementPapersGenerated(currentUser.uid);
     userDoc = { ...userDoc, papersGenerated: (userDoc.papersGenerated || 0) + 1 };
 
-    currentPaper = { paperJSON, sessionId };
-    renderPaperView(paperJSON, subject, paper);
+    currentPaper = { paper: studentPaper, memo: null, generationId, sessionId };
+    renderPaperView(studentPaper, subject, paper);
     navigate('paper');
 
   } catch (err) {
@@ -321,24 +328,65 @@ document.getElementById('form-generate').addEventListener('submit', async e => {
 function renderPaperView(paperJSON, subject, paper) {
   document.getElementById('paper-meta').textContent = `${subject} — ${paper} · ${paperJSON.totalMarks} marks · ${paperJSON.duration}`;
   const contentEl = document.getElementById('paper-content');
-  contentEl.innerHTML = renderPaper(paperJSON) + renderAnswerSection();
+  contentEl.innerHTML = renderPaper(paperJSON);
 
-  // File upload label update
-  document.getElementById('answer-file-input').addEventListener('change', e => {
-    const file = e.target.files[0];
-    document.getElementById('answer-file-name').textContent = file ? file.name : '';
-    if (file) document.getElementById('bulk-answer-input').value = '';
+  partPhotos = {}; // fresh paper → clear any previously uploaded photos
+  wirePhotoUploads(contentEl);
+
+  // Render LaTeX maths (KaTeX), with raw-text fallback on parse failure.
+  typesetMath(contentEl);
+}
+
+// Attach per-part photo-of-working upload handlers.
+function wirePhotoUploads(rootEl) {
+  rootEl.querySelectorAll('.photo-input').forEach(input => {
+    const partId = input.id.replace(/^photo-/, '');
+    input.addEventListener('change', () => handlePhotoSelected(input, partId));
   });
+}
 
-  // Re-render KaTeX after DOM update
-  if (window.renderMathInElement) {
-    window.renderMathInElement(contentEl, {
-      delimiters: [
-        { left: '$$', right: '$$', display: true },
-        { left: '$', right: '$', display: false }
-      ]
-    });
+async function handlePhotoSelected(input, partId) {
+  const file = input.files?.[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById(`photostatus-${partId}`);
+  const thumbWrap = document.getElementById(`thumb-${partId}`);
+  statusEl.textContent = 'Uploading…';
+
+  try {
+    // Replace any existing photo for this part.
+    if (partPhotos[partId]?.path) {
+      await deleteSubmissionPhoto(partPhotos[partId].path).catch(() => {});
+    }
+
+    const blob = await compressImage(file, 1_000_000); // ~1MB cap
+    const paperId = currentPaper?.sessionId || 'unsaved';
+    const { url, path } = await uploadSubmissionPhoto(currentUser.uid, paperId, partId, blob);
+    partPhotos[partId] = { url, path };
+
+    thumbWrap.hidden = false;
+    thumbWrap.innerHTML = `
+      <img class="photo-thumb" src="${url}" alt="Working for ${partId}">
+      <button type="button" class="photo-remove" data-part="${partId}">Remove</button>`;
+    thumbWrap.querySelector('.photo-remove').addEventListener('click', () => removePhoto(partId));
+    statusEl.textContent = '';
+  } catch (err) {
+    console.error('Photo upload failed:', err);
+    statusEl.textContent = 'Upload failed — try again.';
+    statusEl.classList.add('error');
+    input.value = '';
   }
+}
+
+async function removePhoto(partId) {
+  if (partPhotos[partId]?.path) {
+    await deleteSubmissionPhoto(partPhotos[partId].path).catch(() => {});
+  }
+  delete partPhotos[partId];
+  const thumbWrap = document.getElementById(`thumb-${partId}`);
+  if (thumbWrap) { thumbWrap.hidden = true; thumbWrap.innerHTML = ''; }
+  const input = document.getElementById(`photo-${partId}`);
+  if (input) input.value = '';
 }
 
 document.getElementById('btn-back-dashboard').addEventListener('click', () => navigate('dashboard'));
@@ -346,14 +394,23 @@ document.getElementById('btn-print').addEventListener('click', () => window.prin
 
 document.getElementById('btn-submit-paper').addEventListener('click', async () => {
   if (!currentPaper) return;
-  const { paperJSON, sessionId } = currentPaper;
+  const { paper, generationId, sessionId } = currentPaper;
 
-  const bulkText = document.getElementById('bulk-answer-input')?.value?.trim() || '';
-  const fileInput = document.getElementById('answer-file-input');
-  const file = fileInput?.files?.[0] || null;
+  // Collect per-part answers: typed text and/or an uploaded working photo.
+  const answers = [];
+  document.querySelectorAll('.answer-block').forEach(block => {
+    const partId = block.dataset.answerFor;
+    const qNum = Number(block.dataset.q);
+    const part = block.dataset.part;
+    const text = block.querySelector('.answer-input')?.value?.trim() || '';
+    const photoURL = partPhotos[partId]?.url || null;
+    if (text || photoURL) {
+      answers.push({ questionId: partId, questionNumber: qNum, part, text, photoURL });
+    }
+  });
 
-  if (!bulkText && !file) {
-    toast('Enter your answers or upload a photo/document before submitting.', 'error');
+  if (!answers.length) {
+    toast('Type an answer or upload a photo of your working for at least one question.', 'error');
     return;
   }
 
@@ -362,25 +419,19 @@ document.getElementById('btn-submit-paper').addEventListener('click', async () =
   btn.textContent = 'Marking…';
 
   try {
-    let answerPayload;
-    if (file) {
-      const base64 = await fileToBase64(file);
-      const mediaType = file.type || 'image/jpeg';
-      answerPayload = { paperJSON, answerImage: { mediaType, data: base64 } };
-    } else {
-      answerPayload = { paperJSON, bulkAnswers: bulkText };
-    }
-    const { markingJSON } = await markPaper(answerPayload);
+    // The server loads the memo by generationId and marks (photos sent as
+    // image inputs); it returns the memo now that the student has submitted.
+    const { markingJSON, memo } = await markPaper({ generationId, answers });
     currentMarking = markingJSON;
+    currentPaper.memo = memo;
 
-    // Persist marking
-    await updateSession(sessionId, { marking: markingJSON });
+    // Persist marking, the submitted answers, and the memo for later review.
+    await updateSession(sessionId, { marking: markingJSON, answers, memo: memo ?? null });
 
-    // Update topic performance
+    // Update topic performance (topic lives on the student paper).
     const topicScores = {};
     markingJSON.questionMarking?.forEach(qm => {
-      // Map question to topic from paperJSON
-      const q = paperJSON.questions.find(q => q.questionNumber === qm.questionNumber);
+      const q = paper.questions.find(q => q.questionNumber === qm.questionNumber);
       if (q?.topic) {
         if (!topicScores[q.topic]) topicScores[q.topic] = { total: 0, available: 0 };
         topicScores[q.topic].total += qm.marksAwarded;
@@ -391,9 +442,9 @@ document.getElementById('btn-submit-paper').addEventListener('click', async () =
     Object.entries(topicScores).forEach(([t, v]) => {
       topicPcts[t] = v.available > 0 ? Math.round((v.total / v.available) * 100) : 0;
     });
-    await updateTopicPerformance(currentUser.uid, paperJSON.subject, markingJSON.weakTopics || [], markingJSON.strongTopics || [], topicPcts);
+    await updateTopicPerformance(currentUser.uid, paper.subject, markingJSON.weakTopics || [], markingJSON.strongTopics || [], topicPcts);
 
-    renderResultsView(markingJSON, paperJSON);
+    renderResultsView(markingJSON, paper, memo);
     navigate('results');
 
   } catch (err) {
@@ -405,8 +456,10 @@ document.getElementById('btn-submit-paper').addEventListener('click', async () =
 });
 
 // ── RESULTS VIEW ─────────────────────────────────────────────
-function renderResultsView(markingJSON, paperJSON) {
-  document.getElementById('results-content').innerHTML = renderResults(markingJSON, paperJSON);
+function renderResultsView(markingJSON, paperJSON, memo) {
+  const el = document.getElementById('results-content');
+  el.innerHTML = renderResults(markingJSON, paperJSON, memo);
+  typesetMath(el); // render maths in feedback + the memorandum
 
   document.getElementById('btn-results-back-paper')?.addEventListener('click', () => navigate('paper'));
   document.getElementById('btn-results-new')?.addEventListener('click', () => {
@@ -481,6 +534,8 @@ function appendTutorMessage(role, text) {
     <div class="tutor-avatar ${role === 'user' ? 'user' : ''}">${role === 'user' ? 'You' : 'AI'}</div>
     <div class="tutor-bubble">${escapeHTML(text)}</div>`;
   container.appendChild(div);
+  // Render any LaTeX maths in the tutor's reply.
+  typesetMath(div.querySelector('.tutor-bubble'));
   container.scrollTop = container.scrollHeight;
   return div;
 }
@@ -574,6 +629,39 @@ function fileToBase64(file) {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+// Compress an image to roughly maxBytes by downscaling + lowering JPEG quality.
+// Falls back to the original file if the browser can't decode it (e.g. some
+// HEIC images have no canvas decoder).
+async function compressImage(file, maxBytes = 1_000_000) {
+  if (file.size <= maxBytes && file.type !== 'image/heic' && file.type !== 'image/heif') return file;
+
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    console.warn('[photo] could not decode for compression, uploading original');
+    return file; // HEIC without decoder, etc.
+  }
+
+  const MAX_DIM = 2000;
+  let { width, height } = bitmap;
+  const scale = Math.min(1, MAX_DIM / Math.max(width, height));
+  width = Math.round(width * scale);
+  height = Math.round(height * scale);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+
+  // Step quality down until under the size cap (or quality floor reached).
+  for (let q = 0.85; q >= 0.4; q -= 0.15) {
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', q));
+    if (blob && (blob.size <= maxBytes || q <= 0.4)) return blob;
+  }
+  return file;
 }
 
 function escapeHTML(str) {

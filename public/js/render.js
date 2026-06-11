@@ -1,24 +1,50 @@
-// Renders a paper JSON into HTML and collects answer inputs
+// Renders the STUDENT-FACING paper (no solutions) and the post-submission memo.
+//
+// The paper object passed here has already had solutions stripped server-side
+// (see api/_paper-split.js). We render only question text, any provided `given`
+// material, mark totals, and per-part answer inputs. Solutions are rendered
+// ONLY in the results/review view, from the separate `memo` object.
+
+// ── KaTeX math typesetting ─────────────────────────────────────────────────
+// Renders $...$ / $$...$$ fragments in a DOM subtree. Never throws: on a parse
+// failure KaTeX leaves the raw source text in place and we log it.
+export function typesetMath(rootEl) {
+  if (!rootEl || !window.renderMathInElement) return;
+  try {
+    window.renderMathInElement(rootEl, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false },
+      ],
+      throwOnError: false,
+      errorCallback: (msg, err) => console.warn('[katex] parse failed, showing raw text:', msg, err),
+    });
+  } catch (e) {
+    console.warn('[katex] typeset failed:', e);
+  }
+}
+
+// ── Student paper ───────────────────────────────────────────────────────────
 
 export function renderPaper(paperJSON) {
   const { subject, paper, grade, totalMarks, duration, questions } = paperJSON;
 
   const headerHTML = `
     <div class="paper-header">
-      <h1>${subject} — ${paper}</h1>
-      <p class="paper-subtitle">Grade ${grade} | IEB</p>
+      <h1>${escapeHTML(subject)} — ${escapeHTML(paper)}</h1>
+      <p class="paper-subtitle">Grade ${escapeHTML(grade)} | IEB</p>
       <div class="paper-header-meta">
-        <span><strong>Total marks:</strong> ${totalMarks}</span>
-        <span><strong>Duration:</strong> ${duration}</span>
+        <span><strong>Total marks:</strong> ${escapeHTML(totalMarks)}</span>
+        <span><strong>Duration:</strong> ${escapeHTML(duration)}</span>
         <span><strong>Date:</strong> ${new Date().toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
       </div>
     </div>
     <div class="paper-instructions">
       <h4>Instructions</h4>
-      Answer ALL questions. Show ALL working clearly. Write neatly and legibly. Number answers as per question numbers. Non-programmable calculators may be used unless otherwise stated.
+      Answer ALL questions in the boxes provided, or upload a photo of your written working for each part. Show ALL working clearly. Non-programmable calculators may be used unless otherwise stated.
     </div>`;
 
-  const questionsHTML = questions.map(q => renderQuestion(q)).join('');
+  const questionsHTML = questions.map(renderQuestion).join('');
   return headerHTML + questionsHTML;
 }
 
@@ -30,46 +56,80 @@ function renderQuestion(q) {
         Question ${q.questionNumber}
         <span class="question-total">[${q.questionTotal} marks]</span>
       </div>
-      ${q.context ? `<p class="part-text">${q.context}</p>` : ''}
+      ${q.context ? `<p class="part-text">${escapeHTML(q.context)}</p>` : ''}
       ${parts}
     </div>`;
 }
 
 function renderPart(qNum, p) {
   const partId = `q${qNum}_${p.part}`;
-  const exprHTML = p.expression
-    ? `<div class="part-expression">${escapeHTML(p.expression)}</div>`
+  // `given` is sanctioned student-visible material (a provided formula/data).
+  // NOTE: we never render `expression` or any solution field here.
+  const givenHTML = p.given
+    ? `<div class="part-given" title="Provided">${escapeHTML(p.given)}</div>`
     : '';
 
   return `
     <div class="question-part" data-part-id="${partId}">
       <div class="part-label">
-        <span>(${p.part})</span>
+        <span>(${escapeHTML(p.part)})</span>
         <span class="part-marks">(${p.marks} mark${p.marks !== 1 ? 's' : ''})</span>
       </div>
-      <p class="part-text">${p.instruction}</p>
-      ${exprHTML}
+      <p class="part-text">${escapeHTML(p.instruction)}</p>
+      ${givenHTML}
+      ${renderAnswerControl(qNum, p.part, partId)}
     </div>`;
 }
 
-export function renderAnswerSection() {
+// Per-part answer input + photo-of-working upload.
+function renderAnswerControl(qNum, part, partId) {
   return `
-    <div class="answer-section" id="answer-section">
-      <h3 class="answer-section-title">Submit Your Answers</h3>
-      <p class="answer-section-hint">Type all your answers below, or upload a photo/document of your written work. Label each answer clearly, e.g. <strong>Q1(a):</strong> your answer here.</p>
-      <textarea id="bulk-answer-input" class="bulk-answer-input" placeholder="Q1(a): …&#10;Q1(b): …&#10;Q2(a): …" rows="12"></textarea>
-      <div class="answer-upload-row">
-        <label class="answer-upload-label" for="answer-file-input">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Upload photo or PDF
+    <div class="answer-block" data-answer-for="${partId}" data-q="${qNum}" data-part="${escapeAttr(part)}">
+      <textarea class="answer-input" id="ans-${partId}"
+        placeholder="Type your answer for Q${qNum}(${escapeAttr(part)})… or upload a photo of your working below"
+        rows="3"></textarea>
+      <div class="answer-tools">
+        <label class="photo-upload-btn" for="photo-${partId}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Upload photo of working
         </label>
-        <input type="file" id="answer-file-input" accept="image/*,.pdf" style="display:none">
-        <span id="answer-file-name" class="answer-file-name"></span>
+        <input type="file" id="photo-${partId}" class="photo-input"
+          accept="image/jpeg,image/png,image/heic,image/heif" capture="environment" hidden>
+        <span class="photo-status" id="photostatus-${partId}"></span>
       </div>
+      <div class="photo-thumb-wrap" id="thumb-${partId}" hidden></div>
     </div>`;
 }
 
-export function renderResults(markingJSON, paperJSON) {
+// ── Post-submission memo (solutions) ────────────────────────────────────────
+// Rendered ONLY in the results view, after the student has submitted.
+export function renderMemo(memo) {
+  if (!memo?.questions?.length) return '';
+  const qs = memo.questions.map(q => {
+    const parts = (q.parts || []).map(p => {
+      const sol = p.solution || {};
+      const steps = (sol.steps || []).map(s => `<li>${escapeHTML(s)}</li>`).join('');
+      const mm = (sol.methodMarks || []).map(m => `<span class="memo-mm">${m.mark}✓ ${escapeHTML(m.criterion)}</span>`).join('');
+      return `
+        <div class="memo-part">
+          <div class="memo-part-label">(${escapeHTML(p.part)}) <span class="part-marks">(${p.marks})</span></div>
+          ${steps ? `<ol class="memo-steps">${steps}</ol>` : ''}
+          ${sol.answer ? `<div class="memo-answer"><strong>Answer:</strong> ${escapeHTML(sol.answer)}</div>` : ''}
+          ${mm ? `<div class="memo-marks">${mm}</div>` : ''}
+        </div>`;
+    }).join('');
+    return `
+      <details class="memo-question">
+        <summary>Question ${q.questionNumber} — ${escapeHTML(q.topic || '')} memorandum</summary>
+        ${parts}
+      </details>`;
+  }).join('');
+  return `<div class="memo-section"><h3 class="memo-title">Memorandum</h3>${qs}</div>`;
+}
+
+// ── Results ─────────────────────────────────────────────────────────────────
+
+export function renderResults(markingJSON, paperJSON, memo) {
   const { totalAwarded, totalAvailable, percentage, generalFeedback, weakTopics, strongTopics, questionMarking } = markingJSON;
   const pctClass = percentage >= 70 ? 'green' : percentage >= 50 ? 'orange' : 'red';
 
@@ -108,6 +168,7 @@ export function renderResults(markingJSON, paperJSON) {
       <div>${questionsHTML}</div>
       ${sideCards}
     </div>
+    ${memo ? renderMemo(memo) : ''}
     <div class="results-cta">
       <button class="btn-ghost" id="btn-results-back-paper">Review paper</button>
       <button class="btn-primary" id="btn-results-new">New paper</button>
@@ -153,4 +214,8 @@ function escapeHTML(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function escapeAttr(str) {
+  return escapeHTML(str).replace(/'/g, '&#39;');
 }

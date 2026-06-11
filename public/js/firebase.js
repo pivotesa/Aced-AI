@@ -1,6 +1,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, orderBy, limit, getDocs, increment, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-storage.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyD7Hypls5qhMheQxA487igODehlA345k64",
@@ -14,6 +15,7 @@ const firebaseConfig = {
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
+const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 
 // ── AUTH ────────────────────────────────────────────────────
@@ -108,6 +110,21 @@ export async function getRecentSessions(uid, limitCount = 6) {
 export async function getSession(sessionId) {
   const snap = await getDoc(doc(db, 'sessions', sessionId));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+// ── SUBMISSION PHOTOS (Firebase Storage) ────────────────────
+// Stored under /submissions/{userId}/{paperId}/{questionId}. Returns a
+// download URL that the marking API receives as an image input.
+export async function uploadSubmissionPhoto(uid, paperId, questionId, blob) {
+  const path = `submissions/${uid}/${paperId}/${questionId}`;
+  const r = storageRef(storage, path);
+  await uploadBytes(r, blob, { contentType: blob.type || 'image/jpeg' });
+  return { url: await getDownloadURL(r), path };
+}
+
+export async function deleteSubmissionPhoto(path) {
+  try { await deleteObject(storageRef(storage, path)); }
+  catch (e) { /* already gone — ignore */ }
 }
 
 // ── TOPIC PERFORMANCE ───────────────────────────────────────
