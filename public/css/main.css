@@ -874,7 +874,7 @@ body {
 
 /* ── MEMORANDUM (post-submission review) ─────────────────── */
 .memo-section { margin-top: 28px; }
-.memo-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 12px; }
+.memo-title { font-family: var(--font-serif); font-size: 1.2rem; font-weight: 700; margin-bottom: 12px; }
 .memo-question {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -887,9 +887,9 @@ body {
   color: var(--ink-2);
 }
 .memo-part { margin: 12px 0 4px; padding-left: 4px; }
-.memo-part-label { font-weight: 600; font-size: 0.88rem; margin-bottom: 4px; }
-.memo-steps { margin: 4px 0 6px 18px; font-size: 0.88rem; line-height: 1.6; }
-.memo-answer { font-size: 0.9rem; margin: 4px 0; }
+.memo-part-label { font-family: var(--font-serif); font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+.memo-steps { font-family: var(--font-serif); margin: 4px 0 6px 18px; font-size: 0.95rem; line-height: 1.7; }
+.memo-answer { font-family: var(--font-serif); font-size: 1rem; margin: 4px 0; }
 .memo-marks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .memo-mm {
   font-size: 0.76rem; color: var(--teal-dk);
