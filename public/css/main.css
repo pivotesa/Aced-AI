@@ -348,7 +348,7 @@ body {
 .btn-loader {
   width: 16px; height: 16px;
   border: 2px solid rgba(0,0,0,0.2);
-  border-top-color: #0D1117;
+  border-top-color: var(--ink);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
