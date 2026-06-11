@@ -724,7 +724,7 @@ body {
   border-bottom: 1px solid var(--border);
 }
 .settings-row:last-child { border-bottom: none; }
-.settings-label { font-size: 0.875rem; color: var(--ink-2); }
+.settings-label { font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; }
 .settings-value { font-size: 0.875rem; font-weight: 600; }
 
 .pricing-highlight {
