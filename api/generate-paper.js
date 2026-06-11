@@ -64,7 +64,7 @@ export default async function handler(req, res) {
   const generationId = await createGenerationState(uid, { subject, paper, mode });
 
   try {
-    const { paperJSON, verification_report } = await generateValidatedPaper({
+    const { paper: studentPaper, memo, verification_report } = await generateValidatedPaper({
       subject, paper, mode, topic, telemetry,
       deps: { onStatus: (status) => updateGenerationState(generationId, status) },
     });
@@ -74,14 +74,19 @@ export default async function handler(req, res) {
     telemetry.costEstimateUSD = round6(estimateCostUSD(telemetry, MODELS.generation));
     telemetry.baselineSonnetCostUSD = round6(estimateBaselineCostUSD(telemetry));
 
+    // Persist the memo SERVER-SIDE only. It is never sent to the browser at
+    // generation time — the marking endpoint loads it by generationId after the
+    // student submits, so solutions cannot be read from the network response.
     await updateGenerationState(generationId, 'complete', {
       durationMs: telemetry.durationMs,
       verificationReport: verification_report,
+      memo,
     });
     // Fire-and-forget — don't await, don't fail the request on error
     logTelemetry(generationId, telemetry).catch(() => {});
 
-    res.status(200).json({ paperJSON, generationId, verificationReport: verification_report });
+    // Return ONLY the student paper (solutions stripped) + the generation id.
+    res.status(200).json({ paper: studentPaper, generationId, verificationReport: verification_report });
 
   } catch (err) {
     console.error('Generate error:', err.message);

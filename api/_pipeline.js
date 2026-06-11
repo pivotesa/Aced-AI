@@ -24,6 +24,7 @@
 
 import { MODELS, MAX_TOKENS, MAX_REPAIR_ATTEMPTS, SUBJECT_RULES, repairModelForAttempt } from './_config.js';
 import { runVerification, appendFix } from './_verification.js';
+import { splitPaperAndMemo, screenStudentPaper } from './_paper-split.js';
 import { callClaude } from './_anthropic-client.js';
 import { getQuestion } from './_question-bank.js';
 import {
@@ -98,6 +99,17 @@ export async function generateValidatedPaper({ subject, paper, mode, topic, tele
     ? draft
     : await correctSolutions({ draft, subject, system, telemetry, callModel });
 
+  // ── Separate the student paper from the memo + screen for leakage ────────
+  const { paper: studentPaper, memo } = splitPaperAndMemo(paperJSON);
+  const leak = screenStudentPaper(studentPaper, memo);
+  verification.report.checks.push({
+    check: leak.name, layer: 'safety', passed: leak.passed,
+    failures: leak.failures.map(f => ({ question: f.questionNumber ?? null, part: f.part ?? null, reason: f.reason })),
+  });
+  verification.report.summary.total_checks += 1;
+  if (!leak.passed) verification.report.summary.failed += 1; else verification.report.summary.passed += 1;
+  telemetry.studentLeaksStripped = leak.stripped;
+
   // Attach the accumulated fixes to the final report.
   verification.report.fixes_applied = fixes;
   verification.report.final_passed = verification.passed;
@@ -106,7 +118,14 @@ export async function generateValidatedPaper({ subject, paper, mode, topic, tele
   telemetry.finalValidationFailures = verification.failures.map((f) => f.reason);
   telemetry.verificationReportSummary = verification.report.summary;
 
-  return { paperJSON, finalValidation: verification, quality, verification_report: verification.report };
+  return {
+    paperJSON,            // full paper (kept for tests / internal use)
+    paper: studentPaper,  // student-facing, solutions stripped
+    memo,                 // full marking memorandum
+    finalValidation: verification,
+    quality,
+    verification_report: verification.report,
+  };
 }
 
 // ── Pass 1: draft generation (STRICTLY SEQUENTIAL) ───────────────────────────

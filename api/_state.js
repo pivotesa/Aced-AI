@@ -47,3 +47,19 @@ export async function updateGenerationState(id, status, extra = {}) {
     console.error('[state] update failed:', err.message);
   }
 }
+
+/**
+ * Server-side read of a generation doc (memo, uid, status). Used by the marking
+ * endpoint to load the memo WITHOUT it ever being sent to the student's browser
+ * at generation time. Returns null if missing.
+ */
+export async function getGenerationDoc(id) {
+  if (!id) return null;
+  try {
+    const snap = await (await db()).collection('paperGenerations').doc(id).get();
+    return snap.exists ? snap.data() : null;
+  } catch (err) {
+    console.error('[state] read failed:', err.message);
+    return null;
+  }
+}
