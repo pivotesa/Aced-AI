@@ -19,6 +19,13 @@ app.post('/api/tutor-message',        tutorMessageHandler);
 app.post('/api/create-subscription',  createSubscriptionHandler);
 app.post('/api/subscription-webhook', subscriptionWebhookHandler);
 
+// The SPA (sign-in + app screens) lives at /app. View switching is client-side,
+// so any /app/* deep link or refresh also serves the app shell.
+app.get(['/app', '/app/*'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'app.html'));
+});
+
+// Everything else falls back to the landing homepage.
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
