@@ -424,8 +424,8 @@ body {
   text-align: center;
   box-shadow: var(--shadow);
 }
-.paper-header h1 { font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
-.paper-header .paper-subtitle { font-size: 0.875rem; color: var(--ink-2); margin-bottom: 16px; }
+.paper-header h1 { font-family: var(--font-serif); font-size: 1.35rem; font-weight: 700; letter-spacing: 0.02em; margin-bottom: 4px; }
+.paper-header .paper-subtitle { font-family: var(--font-serif); font-size: 0.9rem; color: var(--ink-2); margin-bottom: 16px; }
 .paper-header-meta {
   display: flex; justify-content: center; gap: 32px;
   font-size: 0.8rem; color: var(--ink-2);
@@ -453,9 +453,10 @@ body {
   box-shadow: var(--shadow);
 }
 .question-number {
-  font-size: 0.8rem; font-weight: 700;
-  color: var(--teal); text-transform: uppercase;
-  letter-spacing: 0.05em; margin-bottom: 16px;
+  font-family: var(--font-serif);
+  font-size: 1.05rem; font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 16px;
 }
 .question-total {
   font-size: 0.75rem; color: var(--ink-3);
@@ -466,14 +467,16 @@ body {
 .question-part:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
 
 .part-label {
-  font-size: 0.78rem; font-weight: 700;
-  color: var(--ink-2); margin-bottom: 8px;
+  font-family: var(--font-serif);
+  font-size: 0.95rem; font-weight: 700;
+  color: var(--ink); margin-bottom: 8px;
   display: flex; justify-content: space-between;
 }
 .part-marks { color: var(--ink-3); font-weight: 400; }
 
-.part-text { font-size: 0.9rem; margin-bottom: 12px; line-height: 1.7; }
+.part-text { font-family: var(--font-serif); font-size: 1.05rem; margin-bottom: 12px; line-height: 1.6; }
 .part-expression, .part-given {
+  font-family: var(--font-serif);
   background: var(--teal-lt);
   border-left: 3px solid var(--teal);
   border-radius: 0 6px 6px 0;
