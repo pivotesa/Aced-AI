@@ -7,9 +7,14 @@
   --paper-deep: #F3F1E8;
   --ink:        #16181D;
   --ink-soft:   #4A4D55;
-  --red:        #C8201D;
-  --red-soft:   #FBE9E8;
-  --red-dk:     #A81815;
+  /* Brand accent — was red, now forest green */
+  --accent:      #15803D;
+  --accent-soft: #E6F2EA;
+  --accent-dk:   #0F5E2C;
+  /* Functional error / danger red (kept red so errors read as errors) */
+  --red:         #DC2626;
+  --red-soft:    #FEE2E2;
+  --red-dk:      #B91C1C;
   --rule:       #DDD9CC;
   --highlight:  #FFE96B;
 
@@ -27,9 +32,10 @@
   --ink-2:    var(--ink-soft);
   --ink-3:    #8A9BA8;
   /* teal stays defined for now; retired in favour of red during step 3 */
-  --teal:     #2DD4BF;
-  --teal-lt:  #E6FAF8;
-  --teal-dk:  #1BA89A;
+  /* Legacy teal names retired → brand green accent (one source of truth) */
+  --teal:     var(--accent);
+  --teal-lt:  var(--accent-soft);
+  --teal-dk:  var(--accent-dk);
   --green:    #22C55E;
   --orange:   #F97316;
   --border:   var(--rule);
@@ -56,7 +62,7 @@ body {
 
 /* ── UTILITIES ────────────────────────────────────────────── */
 .hidden { display: none !important; }
-.teal   { color: var(--red); }
+.teal   { color: var(--accent); }
 
 /* ── BUTTONS ──────────────────────────────────────────────── */
 .btn-primary {
@@ -80,8 +86,8 @@ body {
 .btn-primary.full { width: 100%; justify-content: center; }
 .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
 /* Red accent — for the loudest CTAs (Go Pro, Generate). Add class="btn-primary red". */
-.btn-primary.red { background: var(--red); color: #fff; }
-.btn-primary.red:hover { background: var(--red-dk); box-shadow: 0 4px 14px rgba(200,32,29,0.30); }
+.btn-primary.accent { background: var(--accent); color: #fff; }
+.btn-primary.accent:hover { background: var(--accent-dk); box-shadow: 0 4px 14px rgba(21,128,61,0.30); }
 
 .btn-ghost {
   background: transparent;
@@ -132,7 +138,7 @@ body {
   font-size: 1.1rem; font-weight: 800;
   letter-spacing: -0.02em; color: #fff;
 }
-.nav-wordmark .teal { color: var(--red); }
+.nav-wordmark .teal { color: var(--accent); }
 
 .nav-center { display: flex; gap: 4px; }
 .nav-btn {
@@ -185,7 +191,7 @@ body {
   font-size: 1.6rem; font-weight: 800;
   letter-spacing: -0.03em; color: #fff;
 }
-.brand-wordmark .teal { color: var(--red); }
+.brand-wordmark .teal { color: var(--accent); }
 
 .auth-headline {
   font-size: 3rem; font-weight: 800;
@@ -202,7 +208,7 @@ body {
   display: flex; align-items: center; gap: 12px;
   color: rgba(255,255,255,0.75); font-size: 0.95rem;
 }
-.feat-icon { color: var(--red); font-size: 0.75rem; }
+.feat-icon { color: var(--accent); font-size: 0.75rem; }
 
 .auth-panel {
   background: var(--bg);
@@ -253,8 +259,8 @@ body {
   appearance: auto;
 }
 .field input:focus, .field select:focus, .field textarea:focus {
-  border-color: var(--red);
-  box-shadow: 0 0 0 3px rgba(200,32,29,0.15);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(21,128,61,0.15);
 }
 .field select { cursor: pointer; }
 .field textarea { resize: vertical; min-height: 80px; }
@@ -289,7 +295,7 @@ body {
   font-size: 0.75rem; color: var(--ink-3);
   text-align: center; margin-top: 14px; line-height: 1.5;
 }
-.auth-terms a { color: var(--red); text-decoration: none; }
+.auth-terms a { color: var(--accent); text-decoration: none; }
 
 @media (max-width: 860px) {
   .auth-split { grid-template-columns: 1fr; }
@@ -370,7 +376,7 @@ body {
   transition: border-color 140ms, box-shadow 140ms, transform 140ms;
   box-shadow: var(--shadow);
 }
-.session-card:hover { border-color: var(--teal); box-shadow: 0 4px 14px rgba(45,212,191,0.12); transform: translateY(-1px); }
+.session-card:hover { border-color: var(--teal); box-shadow: 0 4px 14px rgba(21,128,61,0.12); transform: translateY(-1px); }
 .session-subject { font-size: 0.78rem; font-weight: 600; color: var(--teal); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
 .session-paper { font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; }
 .session-meta { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--ink-3); }
@@ -429,7 +435,7 @@ body {
 
 .paper-instructions {
   background: var(--teal-lt);
-  border: 1px solid rgba(45,212,191,0.25);
+  border: 1px solid rgba(21,128,61,0.25);
   border-radius: 8px;
   padding: 16px 20px;
   margin-bottom: 24px;
@@ -493,7 +499,7 @@ body {
   margin-top: 10px;
 }
 .answer-input::placeholder { color: #7A8A8A; opacity: 1; }
-.answer-input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(45,212,191,0.15); }
+.answer-input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(21,128,61,0.15); }
 
 .solution-toggle {
   display: inline-flex; align-items: center; gap: 6px;
@@ -602,7 +608,7 @@ body {
 
 .general-feedback-card {
   background: var(--teal-lt);
-  border: 1px solid rgba(45,212,191,0.25);
+  border: 1px solid rgba(21,128,61,0.25);
   border-radius: var(--radius);
   padding: 20px; margin-bottom: 20px;
 }
@@ -701,7 +707,7 @@ body {
   max-height: 160px;
   line-height: 1.5;
 }
-#tutor-input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(45,212,191,0.15); }
+#tutor-input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(21,128,61,0.15); }
 
 @media (max-width: 680px) {
   .tutor-layout { grid-template-columns: 1fr; }
@@ -799,7 +805,7 @@ body {
 .gen-step.active {
   color: var(--teal);
   border-color: var(--teal);
-  background: rgba(45,212,191,0.08);
+  background: rgba(21,128,61,0.08);
   font-weight: 600;
 }
 .gen-step.done { color: #4ade80; border-color: #4ade80; background: rgba(74,222,128,0.08); }
