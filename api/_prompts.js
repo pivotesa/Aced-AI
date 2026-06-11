@@ -61,8 +61,9 @@ function schemaText(category) {
     "parts": [
       {
         "part": "a",
-        "instruction": "<the question text the student sees>",
-        "expression": null,               // equation/expression in plain text if applicable, e.g. "2x^2 - 7x + 3 = 0"
+        "instruction": "<the question text the student sees — LaTeX maths in $...$>",
+        "given": null,                    // STUDENT-VISIBLE provided material ONLY (a supplied formula, constant or data) the student is entitled to, in LaTeX, e.g. "$$A = P(1 + i)^n$$". MUST NOT contain the answer or any derived/target result. Use null when nothing extra is provided.
+        "expression": null,               // MEMO-ONLY scratch equation if useful, e.g. "$2x^2 - 7x + 3 = 0$". NEVER rely on this being shown to the student — anything the student must see goes in instruction or given.
         "marks": 3,                       // integer ≥ 1
         "cognitive_level": 2,             // IEB level 1–4 (see taxonomy above)${variables}${numericCheck}${balanceCheck}
         "solution": {
@@ -521,17 +522,17 @@ Self-check before emitting JSON (do this mentally — output only the JSON):
 // ── Notation conventions (static, shared) ────────────────────────────────────
 
 const NOTATION_CONVENTIONS = `
-Notation and formatting inside question_text, context, steps and answers:
-- All mathematics is written in plain text: x^2 or x² for powers, sqrt() or √ for roots, / for division, × or * for multiplication where ambiguity is possible. No LaTeX, no markdown.
-- Currency: Rand written as "R5 000" (capital R, space as thousands separator). Percentages as "8% p.a." for interest rates.
-- Decimals use the point (e.g. 2.5) and answers are given to two decimal places unless the question states otherwise.
-- Units: SI units with a space between value and unit ("2.5 m/s²", "61.44 J", "450 m²"); units in answers are mandatory for measured quantities.
-- Scientific notation as "3 × 10^8" where magnitudes warrant it.
-- Coordinates as (x ; y) per South African school convention; intervals as x ∈ [2 ; 5).
-- Angles in degrees with the ° symbol; general solutions include "k ∈ ℤ" where applicable.
-- Chemical formulas in plain text with conventional capitalisation (H2SO4, CH3COOH); equations balanced with state symbols where the question requires them.
-- Accounting figures without currency symbols inside calculations but with "R" in final answers; bracketed figures indicate deductions.
-- Question parts are lettered a, b, c…; sub-parts only where genuinely needed and then numbered (i), (ii).`;
+Notation — ALL mathematics MUST be written as LaTeX wrapped in dollar delimiters so the frontend can render it with KaTeX. This applies to "instruction", "given", "context", solution "steps" and "answer".
+- Inline maths: wrap in single dollars, e.g. $3^{x+1}$, $\\frac{2}{x-1}$, $\\sqrt{x+5}$, $\\log_2 x$, $\\sum_{k=1}^{10} k$, $x^2 - 7x + 3 = 0$, $f'(x)$, $\\frac{dy}{dx}$.
+- Display maths (a centred equation on its own line): wrap in double dollars, e.g. $$A = P(1 + i)^n$$.
+- Powers as ^{...}, fractions as \\frac{a}{b}, roots as \\sqrt{...}, subscripts as _{...}, Greek as \\theta \\pi \\Delta, degrees as ^\\circ, multiplication as \\times, plus/minus as \\pm. NEVER write a bare ^ or _ outside dollars, and never use plain "x^2" or unicode "²" — always LaTeX inside dollars.
+- Escape every backslash for JSON: a single LaTeX backslash is written as \\\\ in the JSON string (so \\frac becomes \\\\frac in the raw JSON).
+- NON-maths text stays plain (do not wrap whole sentences in dollars) — only wrap the mathematical fragments.
+- Currency: Rand as plain text "R5 000" (capital R, space thousands separator) — NOT maths. Percentages as "8% p.a.".
+- Units: render with LaTeX where attached to a value, e.g. $2.5 \\text{ m/s}^2$, $61.44 \\text{ J}$; units in numeric answers are mandatory.
+- Scientific notation as $3 \\times 10^{8}$. Coordinates as $(x ; y)$; intervals as $x \\in [2 ; 5)$. General solutions include $k \\in \\mathbb{Z}$.
+- Chemical formulas with subscripts as LaTeX, e.g. $H_2SO_4$, $CH_3COOH$; balance equations with state symbols where required.
+- Question parts are lettered a, b, c…; sub-parts only where genuinely needed, numbered (i), (ii).`;
 
 // ── IEB marking conventions (static, shared) ─────────────────────────────────
 
@@ -556,7 +557,8 @@ The following failure modes are checked PROGRAMMATICALLY after you respond — a
 3. Irrational solutions where exact answers are implied: "solve" questions are validated symbolically — quadratics must have perfect-square discriminants. Always construct backwards from chosen rational roots.
 4. Unused variables: any quantity given in the question but absent from the memo working fails validation. Every given value must be consumed in a named step.
 5. Inconsistent numeric/balance checks: numeric_check expressions are re-evaluated and balance_check debits/credits are compared programmatically — they must match the memo exactly.
-6. Invalid JSON: a single trailing comma, unescaped quote or markdown fence makes the whole response unusable. Output raw JSON only.`;
+6. Invalid JSON: a single trailing comma, unescaped quote or markdown fence makes the whole response unusable. Output raw JSON only.
+7. Solution leakage: the student sees ONLY "instruction" and "given". NEVER place the answer, a derived target equation, or worked steps in "instruction" or "given". If a question asks the student to derive an equation (e.g. "show that $n^2 + 2n = 168$"), that target belongs in the solution/steps, not pre-printed under the question. Keep all answers and working inside "solution".`;
 
 // ── Category-specific construction rules ────────────────────────────────────
 
