@@ -4,13 +4,18 @@
 // Every action is a STATUS CHANGE — documents are never deleted. Reuses the
 // single Firebase app initialised in js/firebase.js.
 
-import { db, signInGoogle, signOutUser, onAuth } from '/js/firebase.js';
-// Firestore query helpers from the SAME SDK version used by js/firebase.js
-// (12.14.0). This does not create a second app — it reuses `db` above.
+import { db, auth, signOutUser, onAuth } from '/js/firebase.js';
+// Firestore + Auth helpers from the SAME SDK version used by js/firebase.js
+// (12.14.0). This reuses the single app — it does not create a second config.
 import {
   collection, query, where, orderBy, limit, startAfter,
   getDocs, getCountFromServer, doc, updateDoc, serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+import {
+  GoogleAuthProvider, signInWithPopup, signInWithRedirect,
+} from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+
+const googleProvider = new GoogleAuthProvider();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EDIT THIS: Google account emails allowed to review questions. The list below
@@ -125,11 +130,36 @@ onAuth(async (user) => {
   await startReview();
 });
 
-$('btn-google').addEventListener('click', async () => {
-  $('signin-error').classList.add('hidden');
-  try { await signInGoogle(); }
-  catch { const el = $('signin-error'); el.textContent = 'Sign-in failed. Please try again.'; el.classList.remove('hidden'); }
-});
+$('btn-google').addEventListener('click', signIn);
+
+async function signIn() {
+  const el = $('signin-error');
+  el.classList.add('hidden');
+  try {
+    await signInWithPopup(auth, googleProvider);
+  } catch (err) {
+    // Popups are frequently blocked — fall back to a full-page redirect.
+    if (['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request'].includes(err?.code)) {
+      try { await signInWithRedirect(auth, googleProvider); return; }
+      catch (err2) { err = err2; }
+    }
+    console.error('admin sign-in error:', err);
+    el.textContent = friendlySignInError(err);
+    el.classList.remove('hidden');
+  }
+}
+
+function friendlySignInError(err) {
+  const code = err?.code || '';
+  const map = {
+    'auth/unauthorized-domain': 'This site’s domain isn’t authorised in Firebase. Add it under Authentication → Settings → Authorized domains.',
+    'auth/operation-not-allowed': 'Google sign-in isn’t enabled (Firebase → Authentication → Sign-in method → Google).',
+    'auth/popup-blocked': 'Your browser blocked the popup. Allow popups for this site, then try again.',
+    'auth/popup-closed-by-user': 'The sign-in window closed before finishing. Try again.',
+    'auth/network-request-failed': 'Network error — check your connection and try again.',
+  };
+  return map[code] || `Sign-in failed${code ? ' (' + code + ')' : ''}. Please try again.`;
+}
 $('admin-signout').addEventListener('click', () => signOutUser());
 $('denied-signout').addEventListener('click', () => signOutUser());
 $('done-reload').addEventListener('click', () => startReview());
