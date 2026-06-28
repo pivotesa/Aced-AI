@@ -52,6 +52,28 @@ function esc(s) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+// Make plain-text maths readable: turn caret/underscore notation into proper
+// super/subscripts (the bank stores "2x^2", "3^(x+1)", "H_2O" — not $LaTeX$),
+// plus a few common symbols. Input is escaped first, so the inserted tags are
+// the only HTML. If the text already uses $…$ it's left for KaTeX instead.
+function fmtMath(raw) {
+  let s = esc(raw);
+  s = s
+    .replace(/\^\{([^}]*)\}/g, '<sup>$1</sup>')          // x^{n}
+    .replace(/\^\(([^)]*)\)/g, '<sup>$1</sup>')          // 3^(x+1)  → drops the brackets
+    .replace(/\^(-?\d+(?:\.\d+)?|[A-Za-z]+)/g, '<sup>$1</sup>') // x^2, 10^n
+    .replace(/_\{([^}]*)\}/g, '<sub>$1</sub>')           // v_{max}
+    .replace(/_(-?\d+|[A-Za-z]+)/g, '<sub>$1</sub>')     // H_2O, v_1
+    .replace(/\bsqrt\s*\(([^)]*)\)/gi, '√($1)')
+    .replace(/&lt;=/g, '≤').replace(/&gt;=/g, '≥').replace(/!=/g, '≠')
+    .replace(/(?<=[\w)])\s*\*\s*(?=[\w(])/g, '·');        // 2*x → 2·x
+  return s;
+}
+function renderText(raw) {
+  const str = String(raw ?? '');
+  return /\$/.test(str) ? esc(str) : fmtMath(str);        // $…$ → leave for KaTeX
+}
+
 // Turn machine values ("routine_procedures") into readable text ("Routine procedures").
 function humanize(s) {
   if (s == null || s === '') return '';
@@ -170,15 +192,15 @@ function renderQuestionBody(q, { includeWarnings = true } = {}) {
     </div>`;
 
   const contextHTML = (q.contextText && q.contextText.trim())
-    ? `<div class="qcontext pw">${esc(q.contextText)}</div>` : '';
+    ? `<div class="qcontext pw">${renderText(q.contextText)}</div>` : '';
 
   const subs = Array.isArray(q.subQuestions) ? q.subQuestions : [];
   const subsHTML = subs.map(sq => `
     <div class="subq">
       <div class="subq-label"><span>(${esc(sq.label ?? '')})</span><span class="m">${esc(sq.marks ?? 0)} mark${sq.marks === 1 ? '' : 's'}</span></div>
-      <div class="subq-text pw">${esc(sq.text ?? '')}</div>
-      ${sq.solution != null && String(sq.solution).trim() ? `<div class="block-label">Solution</div><div class="sol pw">${esc(sq.solution)}</div>` : ''}
-      ${sq.markingNotes != null && String(sq.markingNotes).trim() ? `<div class="block-label">Marking notes</div><div class="notes pw">${esc(sq.markingNotes)}</div>` : ''}
+      <div class="subq-text pw">${renderText(sq.text ?? '')}</div>
+      ${sq.solution != null && String(sq.solution).trim() ? `<div class="block-label">Solution</div><div class="sol pw">${renderText(sq.solution)}</div>` : ''}
+      ${sq.markingNotes != null && String(sq.markingNotes).trim() ? `<div class="block-label">Marking notes</div><div class="notes pw">${renderText(sq.markingNotes)}</div>` : ''}
     </div>`).join('');
 
   return warnHTML + titleHTML + headHTML + contextHTML + subsHTML;
