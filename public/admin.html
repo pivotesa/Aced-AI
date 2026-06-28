@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aced — Question Review</title>
+  <link rel="icon" type="image/svg+xml" href="/aced-appicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Tinos:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- KaTeX (same version + pattern as app.html) so question maths renders -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    /* ── Admin-only styling (everything else reuses main.css) ── */
+    .pw { white-space: pre-wrap; word-wrap: break-word; }
+
+    .admin-top {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      background: var(--navy); color: #fff;
+      padding: 0 24px; height: 58px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .admin-top .brand { display: flex; align-items: center; gap: 10px; }
+    .admin-top .brand b { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.02em; }
+    .admin-top .brand .who { font-family: var(--font-mono); font-size: 0.72rem; color: rgba(255,255,255,0.55); }
+    .admin-top .right { display: flex; align-items: center; gap: 14px; }
+    .admin-top .who-email { font-family: var(--font-mono); font-size: 0.74rem; color: rgba(255,255,255,0.6); }
+
+    .admin-wrap { max-width: 820px; margin: 0 auto; padding: 24px 24px 140px; }
+
+    .centerbox { max-width: 420px; margin: 12vh auto 0; text-align: center; }
+    .centerbox .card { padding: 36px 32px; }
+
+    .progress-bar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px;
+      font-family: var(--font-mono); font-size: 0.76rem; color: var(--ink-soft);
+      margin-bottom: 18px;
+    }
+    .progress-bar .counter { font-weight: 600; color: var(--ink); text-transform: none; letter-spacing: 0; }
+    .progress-bar .pill {
+      background: var(--accent-soft); color: var(--accent-dk);
+      padding: 3px 9px; border-radius: 20px;
+    }
+    .progress-bar .pill.rej { background: #fef2f2; color: #991b1b; }
+
+    .warn-box {
+      background: #fef3c7; color: #92400e;
+      border: 1px solid #fcd34d; border-radius: 8px;
+      padding: 12px 16px; margin-bottom: 16px; font-size: 0.85rem; line-height: 1.6;
+    }
+    .warn-box b { display: block; font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .warn-box ul { margin: 0; padding-left: 18px; }
+
+    .qhead { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .qhead .chip {
+      font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.03em;
+      background: var(--paper-deep); color: var(--ink-2);
+      border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px;
+    }
+    .qhead .chip.accent { background: var(--accent-soft); color: var(--accent-dk); border-color: transparent; }
+
+    .qcontext {
+      font-family: var(--font-serif); font-size: 1.02rem; line-height: 1.6;
+      background: var(--paper-deep); border-left: 3px solid var(--ink);
+      border-radius: 0 8px 8px 0; padding: 12px 16px; margin-bottom: 20px;
+    }
+
+    .subq { padding: 16px 0; border-top: 1px solid var(--border); }
+    .subq:first-child { border-top: none; padding-top: 4px; }
+    .subq .subq-label {
+      font-family: var(--font-serif); font-weight: 700; font-size: 1rem;
+      display: flex; justify-content: space-between; margin-bottom: 8px;
+    }
+    .subq .subq-label .m { color: var(--ink-3); font-weight: 400; }
+    .subq .subq-text { font-family: var(--font-serif); font-size: 1.02rem; line-height: 1.6; margin-bottom: 12px; }
+    .subq .block-label { font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-3); margin: 10px 0 4px; }
+    .subq .sol { font-family: var(--font-serif); font-size: 0.98rem; line-height: 1.6; background: var(--accent-soft); border-radius: 8px; padding: 10px 14px; }
+    .subq .notes { font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; color: var(--ink-2); background: var(--paper-deep); border-radius: 8px; padding: 10px 14px; }
+
+    /* Edit mode — reuse .field inputs from main.css */
+    .edit-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+    .edit-grid .field input.marks { max-width: 110px; }
+
+    /* Sticky action bar */
+    .action-bar {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+      background: rgba(251,250,245,0.96); backdrop-filter: blur(8px);
+      border-top: 1px solid var(--border);
+      padding: 14px 24px;
+    }
+    .action-bar-inner { max-width: 820px; margin: 0 auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .action-bar .reason { flex: 1; min-width: 200px; }
+    .action-bar .reason input { width: 100%; }
+    .kbd { font-family: var(--font-mono); font-size: 0.68rem; opacity: 0.6; margin-left: 6px; }
+    .grow { flex: 1; }
+  </style>
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <div class="admin-top" id="admin-top" hidden>
+    <div class="brand">
+      <svg width="24" height="24" viewBox="0 0 140 140" fill="none" aria-hidden="true">
+        <rect width="140" height="140" rx="31.5" fill="#FBFAF5"/>
+        <g transform="translate(20,120) scale(1,-1)"><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="14.5">
+          <path d="M 16 10 L 50 86 L 84 10" stroke="#16181D"/>
+          <path d="M 23 45 L 40 28 L 88 74" stroke="#15803D"/>
+        </g></g>
+      </svg>
+      <b>Question Review</b>
+    </div>
+    <div class="right">
+      <span class="who-email" id="admin-email"></span>
+      <button class="btn-ghost" id="admin-signout">Sign out</button>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <section id="state-loading" class="centerbox">
+    <div class="card"><p>Loading…</p></div>
+  </section>
+
+  <!-- SIGN IN -->
+  <section id="state-signin" class="centerbox" hidden>
+    <div class="card">
+      <h2 class="card-title">Reviewer sign-in</h2>
+      <p class="card-desc">Sign in with an approved reviewer account to review the question bank.</p>
+      <button class="btn-google" id="btn-google">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/><path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+        Continue with Google
+      </button>
+      <p class="auth-error hidden" id="signin-error"></p>
+    </div>
+  </section>
+
+  <!-- ACCESS DENIED -->
+  <section id="state-denied" class="centerbox" hidden>
+    <div class="card">
+      <h2 class="card-title">Access denied</h2>
+      <p class="card-desc">This account is not on the reviewer allowlist. Ask an administrator to add your email, or sign in with a different account.</p>
+      <button class="btn-ghost full" id="denied-signout">Sign out</button>
+    </div>
+  </section>
+
+  <!-- REVIEW -->
+  <section id="state-review" hidden>
+    <div class="admin-wrap">
+      <div class="progress-bar">
+        <span class="counter" id="counter">—</span>
+        <span class="pill" id="count-approved">Approved 0</span>
+        <span class="pill rej" id="count-rejected">Rejected 0</span>
+        <span id="count-remaining">— pending remaining</span>
+      </div>
+      <div id="q-container"></div>
+    </div>
+
+    <div class="action-bar">
+      <div class="action-bar-inner" id="action-default">
+        <button class="btn-primary accent" id="btn-approve">Approve<span class="kbd">a</span></button>
+        <button class="btn-ghost" id="btn-edit">Edit &amp; approve<span class="kbd">e</span></button>
+        <div class="field reason"><input type="text" id="reject-reason" placeholder="Rejection reason (optional)"></div>
+        <button class="btn-danger" id="btn-reject">Reject<span class="kbd">r</span></button>
+        <button class="btn-ghost" id="btn-skip">Skip<span class="kbd">→</span></button>
+      </div>
+      <div class="action-bar-inner hidden" id="action-edit">
+        <span class="grow" style="font-family:var(--font-mono);font-size:0.76rem;color:var(--ink-soft)">Editing — save writes changes and approves.</span>
+        <button class="btn-primary accent" id="btn-save-approve">Save &amp; approve</button>
+        <button class="btn-ghost" id="btn-cancel-edit">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- DONE -->
+  <section id="state-done" class="centerbox" hidden>
+    <div class="card">
+      <h2 class="card-title">All caught up</h2>
+      <p class="card-desc" id="done-summary">No more questions pending review.</p>
+      <button class="btn-ghost full" id="done-reload">Reload queue</button>
+    </div>
+  </section>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module" src="/js/admin.js"></script>
+</body>
+</html>

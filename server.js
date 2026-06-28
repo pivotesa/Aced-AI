@@ -25,6 +25,11 @@ app.get(['/app', '/app/*'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'app.html'));
 });
 
+// Admin question-review interface.
+app.get(['/admin', '/admin/*'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
 // Everything else falls back to the landing homepage.
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

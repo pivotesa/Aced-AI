@@ -1,0 +1,40 @@
+DRAFT — Firestore security rule for the `questions` collection.
+
+⚠️ This is a SNIPPET to MERGE into your existing Firestore rules in the
+Firebase console — NOT a complete ruleset. Do NOT deploy this file as-is:
+publishing only this would REPLACE all your other rules (users, sessions,
+topicPerformance, paperGenerations, …) and break the app.
+
+The admin UI's ADMIN_EMAILS array only gates what's shown on screen. This rule
+is what actually stops a non-admin from reading or writing `questions` from the
+client. Keep the email list here in sync with ADMIN_EMAILS in js/admin.js.
+
+────────────────────────────────────────────────────────────────────────────
+Add inside  match /databases/{database}/documents { … }  alongside your
+existing collection rules:
+
+    function isReviewer() {
+      return request.auth != null
+          && request.auth.token.email in [
+               'ibudlender@gmail.com'
+               // add co-reviewer emails here
+             ];
+    }
+
+    match /questions/{questionId} {
+      allow read:   if isReviewer();
+      allow update: if isReviewer();           // approve / reject / edit
+      allow create, delete: if false;          // questions are only created by
+                                               // server-side admin scripts, and
+                                               // never deleted from the client
+    }
+────────────────────────────────────────────────────────────────────────────
+
+Notes
+- Server-side scripts using the Firebase Admin SDK bypass these rules, so your
+  generation/assembly pipeline can still create `questions`.
+- `allow update` here is broad (any field). If you want to harden it so reviewers
+  can only flip status / edit subQuestions, add a field-level check, e.g.:
+      allow update: if isReviewer()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status','reviewedBy','reviewedAt','rejectionReason','subQuestions']);
