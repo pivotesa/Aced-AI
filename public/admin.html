@@ -97,6 +97,25 @@
     .action-bar .reason input { width: 100%; }
     .kbd { font-family: var(--font-mono); font-size: 0.68rem; opacity: 0.6; margin-left: 6px; }
     .grow { flex: 1; }
+    .btngroup { display: contents; }
+
+    /* Clearer question header */
+    .qtitle { font-family: var(--font-serif); font-size: 1.3rem; font-weight: 700; margin-bottom: 10px; }
+    .qhead .chip em { font-family: var(--font-mono); font-style: normal; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-3); margin-right: 6px; }
+
+    /* History */
+    .badge { font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 9px; border-radius: 20px; background: var(--paper-deep); color: var(--ink-2); }
+    .badge.approved { background: var(--accent-soft); color: var(--accent-dk); }
+    .badge.rejected { background: #fef2f2; color: #991b1b; }
+    .hist-item { margin-bottom: 12px; }
+    .hist-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .hist-meta { font-size: 0.85rem; color: var(--ink-2); }
+    .hist-date { margin-left: auto; font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-3); }
+    .hist-note { font-size: 0.85rem; margin-top: 8px; }
+    .hist-note em { font-family: var(--font-mono); font-style: normal; font-size: 0.7rem; text-transform: uppercase; color: var(--ink-3); }
+    .hist-details { margin-top: 10px; }
+    .hist-details summary { cursor: pointer; font-family: var(--font-mono); font-size: 0.74rem; color: var(--accent-dk); }
+    .hist-actions { display: flex; gap: 8px; margin-top: 12px; }
   </style>
 </head>
 <body>
@@ -115,6 +134,7 @@
     </div>
     <div class="right">
       <span class="who-email" id="admin-email"></span>
+      <button class="btn-ghost" id="btn-history">History</button>
       <button class="btn-ghost" id="admin-signout">Sign out</button>
     </div>
   </div>
@@ -159,17 +179,18 @@
     </div>
 
     <div class="action-bar">
-      <div class="action-bar-inner" id="action-default">
-        <button class="btn-primary accent" id="btn-approve">Approve<span class="kbd">a</span></button>
-        <button class="btn-ghost" id="btn-edit">Edit &amp; approve<span class="kbd">e</span></button>
-        <div class="field reason"><input type="text" id="reject-reason" placeholder="Rejection reason (optional)"></div>
-        <button class="btn-danger" id="btn-reject">Reject<span class="kbd">r</span></button>
-        <button class="btn-ghost" id="btn-skip">Skip<span class="kbd">→</span></button>
-      </div>
-      <div class="action-bar-inner hidden" id="action-edit">
-        <span class="grow" style="font-family:var(--font-mono);font-size:0.76rem;color:var(--ink-soft)">Editing — save writes changes and approves.</span>
-        <button class="btn-primary accent" id="btn-save-approve">Save &amp; approve</button>
-        <button class="btn-ghost" id="btn-cancel-edit">Cancel</button>
+      <div class="action-bar-inner">
+        <div class="field reason"><input type="text" id="review-note" placeholder="Note — required to reject, optional to approve"></div>
+        <span id="action-default" class="btngroup">
+          <button class="btn-primary accent" id="btn-approve">Approve<span class="kbd">a</span></button>
+          <button class="btn-ghost" id="btn-edit">Edit &amp; approve<span class="kbd">e</span></button>
+          <button class="btn-danger" id="btn-reject">Reject<span class="kbd">r</span></button>
+          <button class="btn-ghost" id="btn-skip">Skip<span class="kbd">→</span></button>
+        </span>
+        <span id="action-edit" class="btngroup hidden">
+          <button class="btn-primary accent" id="btn-save-approve">Save &amp; approve</button>
+          <button class="btn-ghost" id="btn-cancel-edit">Cancel</button>
+        </span>
       </div>
     </div>
   </section>
@@ -180,6 +201,17 @@
       <h2 class="card-title">All caught up</h2>
       <p class="card-desc" id="done-summary">No more questions pending review.</p>
       <button class="btn-ghost full" id="done-reload">Reload queue</button>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="state-history" hidden>
+    <div class="admin-wrap">
+      <div class="progress-bar">
+        <span class="counter">Your reviewed questions</span>
+        <button class="btn-ghost" id="history-back" style="margin-left:auto">Back to review</button>
+      </div>
+      <div id="history-list"></div>
     </div>
   </section>
 

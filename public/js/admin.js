@@ -1,7 +1,8 @@
 // ── Admin question-review interface ──────────────────────────────────────────
 // Reviewers step through `pending_review` questions and approve / reject /
-// edit-then-approve them. Every action is a STATUS CHANGE — documents are never
-// deleted. Reuses the single Firebase app initialised in js/firebase.js.
+// edit-then-approve them, and can review their past decisions in History.
+// Every action is a STATUS CHANGE — documents are never deleted. Reuses the
+// single Firebase app initialised in js/firebase.js.
 
 import { db, signInGoogle, signOutUser, onAuth } from '/js/firebase.js';
 // Firestore query helpers from the SAME SDK version used by js/firebase.js
@@ -25,7 +26,8 @@ const PAGE_SIZE = 25;
 // ── State ────────────────────────────────────────────────────────────────────
 const state = {
   user: null,
-  queue: [],          // loaded question docs (in review order)
+  view: 'review',     // 'review' | 'history'
+  queue: [],          // loaded pending questions (in review order)
   position: 0,        // index into queue of the question on screen
   lastSnap: null,     // Firestore cursor for the next page
   hasMore: true,      // more pending docs beyond what's loaded?
@@ -34,19 +36,38 @@ const state = {
   rejected: 0,
   editing: false,
   busy: false,        // a Firestore write is in flight
+  history: [],
 };
 
-// ── Element helpers ──────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
-const STATES = ['state-loading', 'state-signin', 'state-denied', 'state-review', 'state-done'];
+const STATES = ['state-loading', 'state-signin', 'state-denied', 'state-review', 'state-done', 'state-history'];
+const TOPBAR_STATES = ['state-review', 'state-done', 'state-history'];
 function show(stateId) {
   STATES.forEach(s => { const el = $(s); if (el) el.hidden = (s !== stateId); });
-  $('admin-top').hidden = !(stateId === 'state-review' || stateId === 'state-done');
+  $('admin-top').hidden = !TOPBAR_STATES.includes(stateId);
 }
 function esc(s) {
   return String(s ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+// Turn machine values ("routine_procedures") into readable text ("Routine procedures").
+function humanize(s) {
+  if (s == null || s === '') return '';
+  const t = String(s).replace(/_/g, ' ').trim();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+function paperLabel(p) {
+  if (!p) return '';
+  return String(p).toLowerCase().startsWith('paper') ? humanize(p) : 'Paper ' + p;
+}
+function msOf(ts) { return ts?.toMillis ? ts.toMillis() : (ts?.seconds ? ts.seconds * 1000 : 0); }
+function fmtDate(ts) {
+  const ms = msOf(ts);
+  if (!ms) return '';
+  try { return new Date(ms).toLocaleString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+  catch { return ''; }
 }
 function typeset(el) {
   if (el && window.renderMathInElement) {
@@ -73,7 +94,8 @@ onAuth(async (user) => {
   state.user = user;
   if (!user) { show('state-signin'); return; }
   $('admin-email').textContent = user.email || '';
-  if (!ADMIN_EMAILS.includes((user.email || '').toLowerCase()) && !ADMIN_EMAILS.includes(user.email)) {
+  const email = (user.email || '');
+  if (!ADMIN_EMAILS.includes(email) && !ADMIN_EMAILS.includes(email.toLowerCase())) {
     show('state-denied');
     return;
   }
@@ -84,43 +106,42 @@ onAuth(async (user) => {
 $('btn-google').addEventListener('click', async () => {
   $('signin-error').classList.add('hidden');
   try { await signInGoogle(); }
-  catch (e) { const el = $('signin-error'); el.textContent = 'Sign-in failed. Please try again.'; el.classList.remove('hidden'); }
+  catch { const el = $('signin-error'); el.textContent = 'Sign-in failed. Please try again.'; el.classList.remove('hidden'); }
 });
 $('admin-signout').addEventListener('click', () => signOutUser());
 $('denied-signout').addEventListener('click', () => signOutUser());
 $('done-reload').addEventListener('click', () => startReview());
+$('btn-history').addEventListener('click', openHistory);
+$('history-back').addEventListener('click', () => { state.view = 'review'; show('state-review'); });
 
 // ── Queue loading ────────────────────────────────────────────────────────────
 async function startReview() {
+  state.view = 'review';
   state.queue = []; state.position = 0; state.lastSnap = null; state.hasMore = true;
   state.approved = 0; state.rejected = 0; state.editing = false;
   show('state-loading');
   try {
-    // Total pending (count query needs only the single-field status index).
     const countSnap = await getCountFromServer(
       query(collection(db, 'questions'), where('status', '==', 'pending_review'))
     );
     state.totalPending = countSnap.data().count;
-
     await loadNextPage();
     show('state-review');
     render();
   } catch (err) {
     console.error(err);
-    // A composite-index error includes a console URL to create the index.
     show('state-review');
     $('q-container').innerHTML =
       `<div class="card"><h2 class="card-title">Couldn't load the queue</h2>
-       <p class="card-desc">${esc(err.message || String(err))}</p>
-       <p class="card-desc">If this mentions an index, open the link in the browser console to create it, then reload.</p></div>`;
+       <p class="card-desc pw">${esc(err.message || String(err))}</p>
+       <p class="card-desc">If this mentions permissions, add the Firestore rule. If it mentions an index, open the link in the browser console to create it, then reload.</p></div>`;
     setActionsEnabled(false);
   }
 }
 
 async function loadNextPage() {
-  let q;
   const base = [collection(db, 'questions'), where('status', '==', 'pending_review'), orderBy('topic'), orderBy('subtopic')];
-  q = state.lastSnap
+  const q = state.lastSnap
     ? query(...base, startAfter(state.lastSnap), limit(PAGE_SIZE))
     : query(...base, limit(PAGE_SIZE));
   const snap = await getDocs(q);
@@ -129,40 +150,23 @@ async function loadNextPage() {
   state.hasMore = snap.docs.length === PAGE_SIZE;
 }
 
-// ── Rendering ────────────────────────────────────────────────────────────────
-async function render() {
-  state.editing = false;
-  $('action-default').classList.remove('hidden');
-  $('action-edit').classList.add('hidden');
-  $('reject-reason').value = '';
-
-  // Need another page?
-  if (state.position >= state.queue.length) {
-    if (state.hasMore) {
-      show('state-loading');
-      try { await loadNextPage(); } catch (e) { toast('Failed to load more.', 'error'); }
-      show('state-review');
-    }
-  }
-  if (state.position >= state.queue.length) { finishDone(); return; }
-
-  const q = state.queue[state.position];
-  updateProgress();
-
+// ── Question rendering (shared by review + history detail) ────────────────────
+function renderQuestionBody(q, { includeWarnings = true } = {}) {
   const warnings = Array.isArray(q.validationWarnings) ? q.validationWarnings.filter(Boolean) : [];
-  const warnHTML = warnings.length ? `
+  const warnHTML = (includeWarnings && warnings.length) ? `
     <div class="warn-box">
       <b>Validation warnings (${warnings.length})</b>
       <ul>${warnings.map(w => `<li class="pw">${esc(typeof w === 'string' ? w : JSON.stringify(w))}</li>`).join('')}</ul>
     </div>` : '';
 
+  const titleHTML = `<div class="qtitle">${esc(humanize(q.subject))}${q.paper ? ' · ' + esc(paperLabel(q.paper)) : ''}</div>`;
+
   const headHTML = `
     <div class="qhead">
-      <span class="chip accent">${esc(q.topic || '—')}</span>
-      ${q.subtopic ? `<span class="chip">${esc(q.subtopic)}</span>` : ''}
-      <span class="chip">${esc(q.marks ?? '?')} marks</span>
-      <span class="chip">Cognitive L${esc(q.cognitiveLevel ?? '?')}</span>
-      ${q.subject ? `<span class="chip">${esc(q.subject)}${q.paper ? ' · ' + esc(q.paper) : ''}</span>` : ''}
+      <span class="chip accent"><em>Topic</em> ${esc(humanize(q.topic))}</span>
+      ${q.subtopic ? `<span class="chip"><em>Subtopic</em> ${esc(humanize(q.subtopic))}</span>` : ''}
+      <span class="chip"><em>Marks</em> ${esc(q.marks ?? '?')}</span>
+      <span class="chip"><em>Cognitive level</em> ${esc(humanize(q.cognitiveLevel))}</span>
     </div>`;
 
   const contextHTML = (q.contextText && q.contextText.trim())
@@ -177,7 +181,25 @@ async function render() {
       ${sq.markingNotes != null && String(sq.markingNotes).trim() ? `<div class="block-label">Marking notes</div><div class="notes pw">${esc(sq.markingNotes)}</div>` : ''}
     </div>`).join('');
 
-  $('q-container').innerHTML = `<div class="card">${warnHTML}${headHTML}${contextHTML}${subsHTML}</div>`;
+  return warnHTML + titleHTML + headHTML + contextHTML + subsHTML;
+}
+
+async function render() {
+  state.editing = false;
+  $('action-default').classList.remove('hidden');
+  $('action-edit').classList.add('hidden');
+  $('review-note').value = '';
+
+  if (state.position >= state.queue.length && state.hasMore) {
+    show('state-loading');
+    try { await loadNextPage(); } catch { toast('Failed to load more.', 'error'); }
+    show('state-review');
+  }
+  if (state.position >= state.queue.length) { finishDone(); return; }
+
+  const q = state.queue[state.position];
+  updateProgress();
+  $('q-container').innerHTML = `<div class="card">${renderQuestionBody(q)}</div>`;
   typeset($('q-container'));
   setActionsEnabled(true);
 }
@@ -248,6 +270,7 @@ async function writeAndAdvance(update, kind) {
   state.busy = true; setActionsEnabled(false);
   try {
     await updateDoc(doc(db, 'questions', q.id), update);     // confirm success…
+    Object.assign(q, update);                                // keep local copy current
     if (kind === 'approve') state.approved++;
     else if (kind === 'reject') state.rejected++;
     state.position++;                                        // …before advancing
@@ -255,22 +278,32 @@ async function writeAndAdvance(update, kind) {
   } catch (err) {
     console.error(err);
     toast('Save failed — your place is kept. ' + (err.message || ''), 'error');
-    setActionsEnabled(true);                                // stay put, let them retry
+    setActionsEnabled(true);
   } finally {
     state.busy = false;
   }
 }
 
-function approve() { writeAndAdvance({ status: 'approved', ...reviewMeta() }, 'approve'); }
+function approve() {
+  const note = $('review-note').value.trim();
+  const update = { status: 'approved', ...reviewMeta() };
+  if (note) update.approvalNote = note;                      // optional note
+  writeAndAdvance(update, 'approve');
+}
 function reject() {
-  const reason = $('reject-reason').value.trim();
-  const update = { status: 'rejected', ...reviewMeta() };
-  if (reason) update.rejectionReason = reason;
-  writeAndAdvance(update, 'reject');
+  const note = $('review-note').value.trim();
+  if (!note) {                                               // reason is REQUIRED
+    toast('Add a reason before rejecting.', 'error');
+    $('review-note').focus();
+    return;
+  }
+  writeAndAdvance({ status: 'rejected', rejectionReason: note, ...reviewMeta() }, 'reject');
 }
 function saveAndApprove() {
-  const subQuestions = collectEdits();
-  writeAndAdvance({ subQuestions, status: 'approved', ...reviewMeta() }, 'approve');
+  const note = $('review-note').value.trim();
+  const update = { subQuestions: collectEdits(), status: 'approved', ...reviewMeta() };
+  if (note) update.approvalNote = note;
+  writeAndAdvance(update, 'approve');
 }
 function skip() { if (state.busy) return; state.position++; render(); }
 
@@ -281,16 +314,87 @@ $('btn-skip').addEventListener('click', skip);
 $('btn-save-approve').addEventListener('click', saveAndApprove);
 $('btn-cancel-edit').addEventListener('click', render);
 
-// ── Keyboard shortcuts (ignored while typing in a field) ─────────────────────
+// ── History ──────────────────────────────────────────────────────────────────
+async function openHistory() {
+  state.view = 'history';
+  show('state-history');
+  $('history-list').innerHTML = '<div class="card"><p class="card-desc">Loading…</p></div>';
+  try {
+    // Filter by the current reviewer (single-field index is automatic — no
+    // composite index needed); sort newest-first client-side.
+    const snap = await getDocs(query(
+      collection(db, 'questions'), where('reviewedBy', '==', state.user.email), limit(200)
+    ));
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    items.sort((a, b) => msOf(b.reviewedAt) - msOf(a.reviewedAt));
+    state.history = items;
+    renderHistory();
+  } catch (err) {
+    console.error(err);
+    $('history-list').innerHTML = `<div class="card"><p class="card-desc pw">${esc(err.message || String(err))}</p></div>`;
+  }
+}
+
+function renderHistory() {
+  const items = state.history;
+  if (!items.length) {
+    $('history-list').innerHTML = '<div class="card"><p class="card-desc">You haven\'t reviewed any questions yet.</p></div>';
+    return;
+  }
+  $('history-list').innerHTML = items.map(q => {
+    const badge = q.status === 'approved' ? '<span class="badge approved">Approved</span>'
+      : q.status === 'rejected' ? '<span class="badge rejected">Rejected</span>'
+        : `<span class="badge">${esc(q.status)}</span>`;
+    const note = q.rejectionReason || q.approvalNote || '';
+    const noteLabel = q.status === 'rejected' ? 'Reason' : 'Note';
+    return `
+      <div class="card hist-item">
+        <div class="hist-top">
+          ${badge}
+          <span class="hist-meta">${esc(humanize(q.subject))} · ${esc(humanize(q.topic))}${q.subtopic ? ' · ' + esc(humanize(q.subtopic)) : ''} · ${esc(q.marks ?? '?')} marks</span>
+          <span class="hist-date">${esc(fmtDate(q.reviewedAt))}</span>
+        </div>
+        ${note ? `<div class="hist-note pw"><em>${noteLabel}:</em> ${esc(note)}</div>` : ''}
+        <details class="hist-details"><summary>View question</summary>${renderQuestionBody(q, { includeWarnings: false })}</details>
+        <div class="hist-actions">
+          ${q.status !== 'approved' ? `<button class="btn-ghost" data-id="${q.id}" data-to="approved">Set approved</button>` : ''}
+          ${q.status !== 'rejected' ? `<button class="btn-danger" data-id="${q.id}" data-to="rejected">Set rejected</button>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+  $('history-list').querySelectorAll('[data-to]').forEach(b =>
+    b.addEventListener('click', () => changeDecision(b.dataset.id, b.dataset.to, b)));
+  typeset($('history-list'));
+}
+
+async function changeDecision(id, to, btn) {
+  if (state.busy) return;
+  state.busy = true; if (btn) btn.disabled = true;
+  try {
+    await updateDoc(doc(db, 'questions', id), { status: to, ...reviewMeta() });
+    const item = state.history.find(h => h.id === id);
+    if (item) item.status = to;
+    toast(`Changed to ${to}.`, 'success');
+    renderHistory();
+  } catch (err) {
+    console.error(err);
+    toast('Change failed. ' + (err.message || ''), 'error');
+    if (btn) btn.disabled = false;
+  } finally {
+    state.busy = false;
+  }
+}
+
+// ── Keyboard shortcuts (review view only, ignored while typing) ───────────────
 document.addEventListener('keydown', (e) => {
-  if ($('state-review').hidden) return;
+  if (state.view !== 'review' || $('state-review').hidden) return;
   const t = e.target;
   const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA');
   if (state.editing) {
     if (e.key === 'Escape') { e.preventDefault(); render(); }
-    return; // don't fire review shortcuts while editing
+    return;
   }
-  if (typing) return; // let the reviewer type a rejection reason without triggering
+  if (typing) return; // let the reviewer type a note without triggering shortcuts
   if (e.key === 'a') { e.preventDefault(); approve(); }
   else if (e.key === 'r') { e.preventDefault(); reject(); }
   else if (e.key === 'e') { e.preventDefault(); enterEdit(); }
