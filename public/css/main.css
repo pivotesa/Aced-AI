@@ -791,28 +791,28 @@ body {
 }
 .gen-progress-inner { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .gen-spinner {
-  width: 48px; height: 48px;
-  border: 3px solid var(--border);
-  border-top-color: var(--teal);
+  width: 44px; height: 44px;
+  border: 3px solid var(--rule);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.9s linear infinite;
 }
-.gen-status { font-size: 1rem; font-weight: 600; color: var(--text); margin: 0; }
-.gen-steps { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 280px; }
+.gen-status { font-size: 1.02rem; font-weight: 600; color: var(--ink); margin: 0; }
+.gen-steps { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 300px; }
 .gen-step {
-  font-size: 0.82rem; color: var(--text-muted);
-  padding: 7px 14px; border-radius: 8px;
-  background: var(--navy); border: 1px solid var(--border);
-  transition: all 0.4s ease;
+  font-size: 0.82rem; color: var(--ink-2);
+  padding: 8px 14px; border-radius: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  transition: color 0.3s ease, background 0.3s ease, border-color 0.3s ease;
 }
 .gen-step.active {
-  color: var(--teal);
-  border-color: var(--teal);
-  background: rgba(21,128,61,0.08);
+  color: var(--accent-dk);
+  border-color: var(--accent);
+  background: var(--accent-soft);
   font-weight: 600;
 }
-.gen-step.done { color: #4ade80; border-color: #4ade80; background: rgba(74,222,128,0.08); }
-.gen-hint { font-size: 0.78rem; color: var(--text-muted); margin: 0; }
+.gen-step.done { color: var(--accent-dk); border-color: var(--accent); background: var(--accent-soft); }
+.gen-hint { font-size: 0.78rem; color: var(--ink-3); margin: 0; }
 
 /* ── PER-PART ANSWER + PHOTO UPLOAD ──────────────────────── */
 .answer-block {

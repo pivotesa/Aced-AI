@@ -142,7 +142,10 @@ async function loadDashboard() {
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  const name = userDoc?.name?.split(' ')[0] || '';
+  // Personalise with the first name — fall back to the Google display name,
+  // then the part of the email before "@", so it greets the user by name.
+  let name = (userDoc?.name || currentUser?.displayName || (currentUser?.email || '').split('@')[0] || '').split(' ')[0];
+  if (name) name = name.charAt(0).toUpperCase() + name.slice(1);
   document.getElementById('dashboard-greeting').textContent = `${greeting}${name ? ', ' + name : ''}`;
 
   const usageBadge = document.getElementById('dashboard-usage');
