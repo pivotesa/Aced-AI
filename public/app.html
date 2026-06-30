@@ -155,7 +155,30 @@
           </button>
         </div>
 
-        <!-- Paper Generator Card -->
+        <!-- Recent Sessions -->
+        <div class="section-header">
+          <h3>Recent Sessions</h3>
+        </div>
+        <div id="recent-sessions" class="sessions-grid">
+          <p class="empty-state">No sessions yet — tap “Generate a paper” to start.</p>
+        </div>
+
+        <!-- Topic Performance -->
+        <div class="section-header">
+          <h3>Topic Performance</h3>
+        </div>
+        <div id="topic-performance" class="topic-grid">
+          <p class="empty-state">Complete a paper to see your performance breakdown.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- GENERATE VIEW -->
+    <section id="view-generate" class="view hidden">
+      <div class="page-container">
+        <div class="gen-toolbar">
+          <button class="btn-ghost" id="btn-gen-back">← Home</button>
+        </div>
         <div class="card generator-card">
           <h3 class="card-title">Generate Practice Paper</h3>
           <form id="form-generate" class="generator-form">
@@ -210,22 +233,6 @@
               <p class="gen-hint">This takes about 60–90 seconds</p>
             </div>
           </div>
-        </div>
-
-        <!-- Recent Sessions -->
-        <div class="section-header">
-          <h3>Recent Sessions</h3>
-        </div>
-        <div id="recent-sessions" class="sessions-grid">
-          <p class="empty-state">No sessions yet — generate your first paper above.</p>
-        </div>
-
-        <!-- Topic Performance -->
-        <div class="section-header">
-          <h3>Topic Performance</h3>
-        </div>
-        <div id="topic-performance" class="topic-grid">
-          <p class="empty-state">Complete a paper to see your performance breakdown.</p>
         </div>
       </div>
     </section>

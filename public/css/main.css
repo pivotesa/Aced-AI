@@ -387,6 +387,7 @@ body {
 .hub-card.primary .hub-t { color: var(--paper); }
 .hub-card.primary .hub-d { color: rgba(251,250,245,0.6); }
 .hub-card.primary:hover { border-color: var(--ink); }
+.gen-toolbar { margin-bottom: 18px; }
 
 /* ── SESSIONS GRID ────────────────────────────────────────── */
 .sessions-grid {

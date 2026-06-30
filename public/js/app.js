@@ -169,7 +169,7 @@ async function loadDashboard() {
 function renderRecentSessions(sessions) {
   const el = document.getElementById('recent-sessions');
   if (!sessions.length) {
-    el.innerHTML = '<p class="empty-state">No sessions yet — generate your first paper above.</p>';
+    el.innerHTML = '<p class="empty-state">No sessions yet — tap “Generate a paper” to start.</p>';
     return;
   }
   el.innerHTML = sessions.map(s => {
@@ -212,11 +212,7 @@ async function openSession(sid) {
 // Turns the dashboard into a "where to next" page: quick routes plus a
 // suggestion drawn from the most recent session and weakest topic.
 function buildHub(sessions, perf) {
-  const focusGenerator = () => {
-    document.getElementById('form-generate').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(() => genSubject.focus(), 350);
-  };
-  document.getElementById('hub-generate').onclick = focusGenerator;
+  document.getElementById('hub-generate').onclick = goGenerate;
   document.getElementById('hub-tutor').onclick = () => navigate('tutor');
 
   // Continue last paper
@@ -235,7 +231,7 @@ function buildHub(sessions, perf) {
   const weakCard = document.getElementById('hub-weak');
   if (weak) {
     weakCard.querySelector('.hub-d').textContent = `${weak.topicName} · ${Math.round(weak.averageScore)}%`;
-    weakCard.onclick = () => startTopicDrill(weak.subject, weak.topicName, focusGenerator);
+    weakCard.onclick = () => startTopicDrill(weak.subject, weak.topicName);
     weakCard.classList.remove('hidden');
   } else {
     weakCard.classList.add('hidden');
@@ -250,13 +246,19 @@ function buildHub(sessions, perf) {
   else sug.classList.add('hidden');
 }
 
-// Pre-set the generator to a topic drill for a subject, then scroll to it.
-function startTopicDrill(subject, topicName, focusGenerator) {
+// Open the separate generator page, focusing the subject select.
+function goGenerate() {
+  navigate('generate');
+  setTimeout(() => genSubject.focus(), 60);
+}
+
+// Pre-set the generator to a topic drill for a subject, then open the page.
+function startTopicDrill(subject, topicName) {
   genSubject.value = subject;
   genSubject.dispatchEvent(new Event('change')); // populate papers + topics
   genMode.value = 'topic';
   genMode.dispatchEvent(new Event('change'));    // reveal the topic field
-  focusGenerator();
+  goGenerate();
   toast(`Set to a ${subject} topic drill — pick the paper, then choose ${topicName}.`);
 }
 
@@ -444,6 +446,7 @@ async function removePhoto(partId) {
 }
 
 document.getElementById('btn-back-dashboard').addEventListener('click', () => navigate('dashboard'));
+document.getElementById('btn-gen-back').addEventListener('click', () => { navigate('dashboard'); loadDashboard(); });
 document.getElementById('btn-print').addEventListener('click', () => window.print());
 
 document.getElementById('btn-submit-paper').addEventListener('click', async () => {
