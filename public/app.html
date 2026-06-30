@@ -130,6 +130,31 @@
           <div id="dashboard-usage" class="usage-badge"></div>
         </div>
 
+        <!-- Where to next — route hub -->
+        <div class="suggestion hidden" id="dashboard-suggestion"></div>
+        <div class="hub-grid" id="dashboard-hub">
+          <button type="button" class="hub-card primary" id="hub-generate">
+            <span class="hub-ico">＋</span>
+            <span class="hub-t">Generate a paper</span>
+            <span class="hub-d">A full IEB paper in ~90 seconds</span>
+          </button>
+          <button type="button" class="hub-card hidden" id="hub-continue">
+            <span class="hub-ico">↺</span>
+            <span class="hub-t">Continue last paper</span>
+            <span class="hub-d"></span>
+          </button>
+          <button type="button" class="hub-card hidden" id="hub-weak">
+            <span class="hub-ico">◎</span>
+            <span class="hub-t">Drill a weak topic</span>
+            <span class="hub-d"></span>
+          </button>
+          <button type="button" class="hub-card" id="hub-tutor">
+            <span class="hub-ico">✦</span>
+            <span class="hub-t">Ask the AI tutor</span>
+            <span class="hub-d">Get unstuck on any question</span>
+          </button>
+        </div>
+
         <!-- Paper Generator Card -->
         <div class="card generator-card">
           <h3 class="card-title">Generate Practice Paper</h3>

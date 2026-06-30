@@ -361,6 +361,33 @@ body {
   white-space: nowrap; align-self: flex-start;
 }
 
+/* ── DASHBOARD HUB (where to next) ────────────────────────── */
+.suggestion {
+  background: var(--accent-soft); color: var(--accent-dk);
+  border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;
+  font-size: 0.88rem; line-height: 1.5;
+}
+.hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px; margin-bottom: 28px;
+}
+.hub-card {
+  text-align: left; cursor: pointer; font-family: var(--font-ui);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 18px;
+  display: flex; flex-direction: column; gap: 3px;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.hub-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: #ccc; }
+.hub-card .hub-ico { font-size: 1.25rem; color: var(--accent); margin-bottom: 6px; line-height: 1; }
+.hub-card .hub-t { font-weight: 700; font-size: 0.98rem; letter-spacing: -0.01em; }
+.hub-card .hub-d { font-size: 0.82rem; color: var(--ink-3); }
+.hub-card.primary { background: var(--ink); border-color: var(--ink); }
+.hub-card.primary .hub-t { color: var(--paper); }
+.hub-card.primary .hub-d { color: rgba(251,250,245,0.6); }
+.hub-card.primary:hover { border-color: var(--ink); }
+
 /* ── SESSIONS GRID ────────────────────────────────────────── */
 .sessions-grid {
   display: grid;

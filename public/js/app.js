@@ -157,17 +157,13 @@ async function loadDashboard() {
     usageBadge.style.background = 'var(--teal-lt)';
   }
 
-  // Load recent sessions
-  try {
-    const sessions = await getRecentSessions(currentUser.uid);
-    renderRecentSessions(sessions);
-  } catch (e) { /* Firestore not configured yet */ }
-
-  // Load topic performance
-  try {
-    const perf = await getTopicPerformance(currentUser.uid);
-    renderTopicPerformance(perf);
-  } catch (e) { /* Firestore not configured yet */ }
+  // Load recent sessions + topic performance, then build the route hub.
+  let sessions = [], perf = [];
+  try { sessions = await getRecentSessions(currentUser.uid); renderRecentSessions(sessions); }
+  catch (e) { /* Firestore not configured yet */ }
+  try { perf = await getTopicPerformance(currentUser.uid); renderTopicPerformance(perf); }
+  catch (e) { /* Firestore not configured yet */ }
+  buildHub(sessions, perf);
 }
 
 function renderRecentSessions(sessions) {
@@ -193,20 +189,75 @@ function renderRecentSessions(sessions) {
   }).join('');
 
   el.querySelectorAll('.session-card').forEach(card => {
-    card.addEventListener('click', async () => {
-      const sid = card.dataset.sessionId;
-      const { getSession } = await import('./firebase.js');
-      const session = await getSession(sid);
-      if (!session) return;
-      // New sessions store the student `paper` + a `generationId`; the `memo`
-      // is saved only after marking. Old sessions stored a full `paperJSON`.
-      const paper = session.paper || session.paperJSON;
-      const memo  = session.memo || null; // only present once marked
-      currentPaper = { paper, memo, generationId: session.generationId || null, sessionId: sid };
-      renderPaperView(paper, session.subject, session.paper);
-      navigate('paper');
-    });
+    card.addEventListener('click', () => openSession(card.dataset.sessionId));
   });
+}
+
+// Open a saved session into the paper view (shared by recent-session cards and
+// the "Continue last paper" hub tile).
+async function openSession(sid) {
+  const { getSession } = await import('./firebase.js');
+  const session = await getSession(sid);
+  if (!session) return;
+  // New sessions store the student `paper` + a `generationId`; the `memo` is
+  // saved only after marking. Old sessions stored a full `paperJSON`.
+  const paper = session.paper || session.paperJSON;
+  const memo  = session.memo || null;
+  currentPaper = { paper, memo, generationId: session.generationId || null, sessionId: sid };
+  renderPaperView(paper, session.subject, session.paper);
+  navigate('paper');
+}
+
+// ── Route hub ────────────────────────────────────────────────
+// Turns the dashboard into a "where to next" page: quick routes plus a
+// suggestion drawn from the most recent session and weakest topic.
+function buildHub(sessions, perf) {
+  const focusGenerator = () => {
+    document.getElementById('form-generate').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => genSubject.focus(), 350);
+  };
+  document.getElementById('hub-generate').onclick = focusGenerator;
+  document.getElementById('hub-tutor').onclick = () => navigate('tutor');
+
+  // Continue last paper
+  const last = sessions && sessions[0];
+  const cont = document.getElementById('hub-continue');
+  if (last) {
+    cont.querySelector('.hub-d').textContent = `${last.subject} · ${last.paper}`;
+    cont.onclick = () => openSession(last.id);
+    cont.classList.remove('hidden');
+  } else {
+    cont.classList.add('hidden');
+  }
+
+  // Drill a weak topic (lowest-scoring topic under 60%)
+  const weak = (perf || []).find(p => p.averageScore != null && p.averageScore < 60);
+  const weakCard = document.getElementById('hub-weak');
+  if (weak) {
+    weakCard.querySelector('.hub-d').textContent = `${weak.topicName} · ${Math.round(weak.averageScore)}%`;
+    weakCard.onclick = () => startTopicDrill(weak.subject, weak.topicName, focusGenerator);
+    weakCard.classList.remove('hidden');
+  } else {
+    weakCard.classList.add('hidden');
+  }
+
+  // Personalised suggestion
+  const sug = document.getElementById('dashboard-suggestion');
+  let msg = '';
+  if (weak) msg = `You're at ${Math.round(weak.averageScore)}% on ${weak.topicName} — a focused drill could lift that fast.`;
+  else if (last) msg = `Last time you did ${last.subject} ${last.paper}. Ready for the next one?`;
+  if (msg) { sug.textContent = msg; sug.classList.remove('hidden'); }
+  else sug.classList.add('hidden');
+}
+
+// Pre-set the generator to a topic drill for a subject, then scroll to it.
+function startTopicDrill(subject, topicName, focusGenerator) {
+  genSubject.value = subject;
+  genSubject.dispatchEvent(new Event('change')); // populate papers + topics
+  genMode.value = 'topic';
+  genMode.dispatchEvent(new Event('change'));    // reveal the topic field
+  focusGenerator();
+  toast(`Set to a ${subject} topic drill — pick the paper, then choose ${topicName}.`);
 }
 
 function renderTopicPerformance(perf) {
